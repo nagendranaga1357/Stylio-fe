@@ -1,4 +1,25 @@
+// ============================================
+// V1 API Types - Search & Discovery
+// ============================================
+
+// Service Mode Types (To Salon / To Home)
+export type ServiceMode = 'toSalon' | 'toHome' | 'both';
+
+// Audience Types
+export type AudienceType = 'men' | 'women' | 'kids' | 'unisex';
+
+// Price Level (1-4)
+export type PriceLevel = 1 | 2 | 3 | 4;
+
+// Sort Options
+export type SalonSortBy = 'distance' | 'rating' | 'price' | 'popular';
+export type ServiceSortBy = 'price' | 'popular' | 'duration';
+export type SortOrder = 'asc' | 'desc';
+
+// ============================================
 // User Types
+// ============================================
+
 export interface User {
   id: string;
   username: string;
@@ -44,70 +65,146 @@ export interface AuthResponse {
   };
 }
 
+// ============================================
 // Location Types
+// ============================================
+
+export interface GeoLocation {
+  type: 'Point';
+  coordinates: [number, number]; // [lng, lat]
+}
+
+export interface GeoBounds {
+  type: 'Polygon';
+  coordinates: [number, number][][];
+}
+
 export interface City {
   id: string;
   name: string;
+  slug?: string;
   state: string;
   country: string;
+  geoBounds?: GeoBounds;
   salonCount?: number;
 }
 
 export interface Area {
   id: string;
   name: string;
+  slug?: string;
   city: string | City;
   cityName?: string;
   pincode: string;
+  geoBounds?: GeoBounds;
   salonCount?: number;
 }
 
-// Salon Types
+export interface UserLocation {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  city?: string;
+  area?: string;
+}
+
+// ============================================
+// Salon Types (V1 Enhanced)
+// ============================================
+
 export interface Salon {
   id: string;
   name: string;
   description?: string;
+  // V1: Service mode support
+  mode: ServiceMode;
+  audience: AudienceType[];
+  // Location
   area: Area;
   areaName?: string;
   cityName?: string;
   address: string;
+  location?: GeoLocation;
+  // Contact
   phone?: string;
   email?: string;
   website?: string;
+  // Operating hours
   openingTime: string;
   closingTime: string;
   isOpenSunday: boolean;
+  // Media
   coverImage?: string;
   logo?: string;
   galleryImages?: { image: string; caption?: string }[];
+  thumbnailUrl?: string;
+  // Ratings & Price
   rating: number;
+  averageRating?: number; // V1: precomputed rating
   totalReviews: number;
+  priceLevel?: PriceLevel; // V1: price tier (1-4)
+  // Status
   isActive: boolean;
   isVerified: boolean;
+  // Features
   features?: {
     hasParking: boolean;
     hasWifi: boolean;
     hasAc: boolean;
     acceptsCards: boolean;
   };
+  // Counts
   servicesCount?: number;
   providersCount?: number;
-  distance?: string;
+  // V1: Distance from user (only in geo-search results)
+  distanceInMeters?: number;
+  distance?: string; // formatted distance string
 }
 
+// V1: Enhanced salon search filters
 export interface SalonFilters {
-  city?: string;
-  area?: string;
+  // Text search
+  q?: string;
+  search?: string;
+  // Location-based search
+  lat?: number;
+  lng?: number;
+  radius?: number; // in meters, default 5000
+  // City/Area based search
+  cityId?: string;
+  areaId?: string;
+  city?: string; // legacy support
+  area?: string; // legacy support
+  // Mode & Audience filters
+  mode?: ServiceMode;
+  audience?: AudienceType;
+  // Rating & Price filters
   minRating?: number;
+  maxRating?: number;
+  minPriceLevel?: PriceLevel;
+  maxPriceLevel?: PriceLevel;
+  // Feature filters (legacy)
   hasParking?: boolean;
   hasWifi?: boolean;
   hasAc?: boolean;
-  search?: string;
+  // Pagination
   page?: number;
   limit?: number;
+  // Sorting
+  sortBy?: SalonSortBy;
+  sortOrder?: SortOrder;
 }
 
-// Service Types
+// V1: Salon list response with enhanced pagination
+export interface SalonListResponse {
+  data: Salon[];
+  pagination: PaginationMeta;
+}
+
+// ============================================
+// Service Types (V1 Enhanced)
+// ============================================
+
 export interface ServiceCategory {
   id: string;
   name: string;
@@ -131,20 +228,64 @@ export interface ServiceType {
 export interface Service {
   id: string;
   salon: string | Salon;
+  salonId?: string;
   salonName?: string;
   serviceType: string | ServiceType;
   serviceTypeName?: string;
   categoryName?: string;
   name: string;
   description?: string;
+  // V1: Mode & Audience
+  mode?: ServiceMode;
+  audience?: AudienceType[];
+  // Pricing
   price: number;
+  basePrice?: number; // V1: base price
   discountedPrice?: number;
   finalPrice: number;
+  // Duration
   durationMinutes: number;
+  // Flags
   isPopular: boolean;
 }
 
+// V1: Enhanced service search filters
+export interface ServiceFilters {
+  // Text search
+  q?: string;
+  // Mode & Audience
+  mode?: ServiceMode;
+  audience?: AudienceType;
+  // Salon
+  salonId?: string;
+  salon?: string; // legacy
+  // Category
+  categoryId?: string;
+  typeId?: string;
+  category?: string; // legacy
+  // Price range
+  minPrice?: number;
+  maxPrice?: number;
+  // Flags
+  popular?: boolean;
+  // Pagination
+  page?: number;
+  limit?: number;
+  // Sorting
+  sortBy?: ServiceSortBy;
+  sortOrder?: SortOrder;
+}
+
+// V1: Service list response
+export interface ServiceListResponse {
+  data: Service[];
+  pagination: PaginationMeta;
+}
+
+// ============================================
 // Provider Types
+// ============================================
+
 export interface Provider {
   id: string;
   user: User;
@@ -173,7 +314,10 @@ export interface Provider {
   }[];
 }
 
+// ============================================
 // Booking Types
+// ============================================
+
 export interface BookingService {
   service: Service | string;
   serviceName?: string;
@@ -234,7 +378,10 @@ export interface TimeSlot {
   available: boolean;
 }
 
+// ============================================
 // Review Types
+// ============================================
+
 export interface Review {
   id: string;
   salon?: Salon;
@@ -252,7 +399,10 @@ export interface Review {
   createdAt: string;
 }
 
+// ============================================
 // Other Types
+// ============================================
+
 export interface Notification {
   id: string;
   title: string;
@@ -281,20 +431,55 @@ export interface PromoCode {
   validUntil: string;
 }
 
-// Pagination
+// ============================================
+// Pagination Types (V1 Enhanced)
+// ============================================
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  pages?: number;
+  hasNextPage?: boolean;
+  hasPrevPage?: boolean;
+}
+
+// Legacy pagination response (backward compatible)
 export interface PaginatedResponse<T> {
   salons?: T[];
+  services?: T[];
   bookings?: T[];
   data?: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
+  pagination: PaginationMeta;
+}
+
+// ============================================
+// V1: Unified Search Types
+// ============================================
+
+export interface UnifiedSearchParams {
+  q?: string;
+  lat?: number;
+  lng?: number;
+  radius?: number;
+  mode?: ServiceMode;
+  audience?: AudienceType;
+  type?: 'salons' | 'services' | 'providers' | 'all';
+}
+
+export interface UnifiedSearchResponse {
+  salons?: SalonListResponse;
+  services?: ServiceListResponse;
+  providers?: {
+    data: Provider[];
+    pagination: PaginationMeta;
   };
 }
 
+// ============================================
 // Navigation Types
+// ============================================
+
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
@@ -317,9 +502,13 @@ export type AuthStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
-  Search: undefined;
+  Search: { 
+    category?: string; 
+    mode?: ServiceMode;
+    audience?: AudienceType;
+    q?: string;
+  } | undefined;
   Bookings: undefined;
   Shorts: undefined;
   Profile: undefined;
 };
-

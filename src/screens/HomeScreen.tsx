@@ -1,37 +1,75 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Image,
-  FlatList,
-  TextInput,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { useAuth, useSalons } from '../hooks';
+import { useAuth, useSalons, useLocation } from '../hooks';
 import { serviceService, notificationService } from '../services';
-import { Salon, ServiceCategory } from '../types';
+import { Salon, ServiceCategory, ServiceMode } from '../types';
 import { colors, spacing, borderRadius, typography, shadows } from '../utils/theme';
-import SalonCard from '../components/SalonCard';
+import { SalonCard, SalonCardHorizontal, ServiceModeSelector } from '../components';
 
+/**
+ * HomeScreen - V1 Enhanced
+ * 
+ * Main landing screen with:
+ * - Service mode selector (To Salon / To Home)
+ * - Location-aware search
+ * - Category browsing
+ * - Popular salons for selected mode
+ * - Nearby salons (when location available)
+ */
 const HomeScreen = () => {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
-  const { salons, isLoading, fetchSalons } = useSalons();
+  const { 
+    salons, 
+    isLoading, 
+    fetchSalons, 
+    searchByLocation, 
+    searchByMode 
+  } = useSalons();
+  const {
+    location,
+    hasPermission,
+    requestPermission,
+    formatDistance,
+  } = useLocation(true); // Auto-request location
   
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<ServiceMode | null>(null);
+  const [nearbySalons, setNearbySalons] = useState<Salon[]>([]);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Load nearby salons when location becomes available
+  useEffect(() => {
+    if (location && selectedMode) {
+      loadNearbySalons();
+    }
+  }, [location, selectedMode]);
+
+  // Reload salons when mode changes
+  useEffect(() => {
+    if (selectedMode) {
+      loadSalonsByMode(selectedMode);
+    } else {
+      fetchSalons({ limit: 10 });
+    }
+  }, [selectedMode]);
 
   const loadData = async () => {
     await Promise.all([
@@ -59,10 +97,57 @@ const HomeScreen = () => {
     }
   };
 
+  const loadSalonsByMode = async (mode: ServiceMode) => {
+    if (location) {
+      await searchByLocation(location.latitude, location.longitude, {
+        mode,
+        radius: 10000, // 10km
+        limit: 10,
+      });
+    } else {
+      await searchByMode(mode, { limit: 10 });
+    }
+  };
+
+  const loadNearbySalons = async () => {
+    if (!location) return;
+    
+    try {
+      const result = await import('../services').then(m => 
+        m.salonService.searchByLocation(
+          location.latitude,
+          location.longitude,
+          {
+            radius: 5000, // 5km
+            mode: selectedMode || undefined,
+            limit: 5,
+          }
+        )
+      );
+      setNearbySalons(result.data);
+    } catch (err) {
+      console.error('Failed to load nearby salons', err);
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadData();
+    if (location && selectedMode) {
+      await loadNearbySalons();
+    }
     setRefreshing(false);
+  };
+
+  const handleModeChange = (mode: ServiceMode | null) => {
+    setSelectedMode(mode);
+  };
+
+  const handleLocationRequest = async () => {
+    const granted = await requestPermission();
+    if (granted) {
+      Alert.alert('Location Enabled', 'We\'ll show you nearby salons!');
+    }
   };
 
   const getCategoryIcon = (name: string): keyof typeof Ionicons.glyphMap => {
@@ -75,8 +160,17 @@ const HomeScreen = () => {
       hair: 'cut',
       makeup: 'color-palette',
       nails: 'hand-left',
+      facial: 'sparkles',
+      massage: 'body',
     };
     return icons[name.toLowerCase()] || 'ellipse';
+  };
+
+  const getModeDescription = (): string => {
+    if (!selectedMode) return 'All services';
+    if (selectedMode === 'toSalon') return 'Visit a salon near you';
+    if (selectedMode === 'toHome') return 'Get services at your doorstep';
+    return 'Browse all options';
   };
 
   return (
@@ -91,7 +185,20 @@ const HomeScreen = () => {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Hello, {user?.firstName || user?.username}!</Text>
-            <Text style={styles.subGreeting}>Your style, perfected ✨</Text>
+            <TouchableOpacity 
+              style={styles.locationRow}
+              onPress={handleLocationRequest}
+            >
+              <Ionicons 
+                name={hasPermission ? 'location' : 'location-outline'} 
+                size={14} 
+                color={hasPermission ? colors.primary : colors.textSecondary} 
+              />
+              <Text style={styles.locationText}>
+                {location?.city || location?.area || 'Enable location'}
+              </Text>
+              <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
           <TouchableOpacity
             style={styles.notificationButton}
@@ -109,15 +216,61 @@ const HomeScreen = () => {
         {/* Search Bar */}
         <TouchableOpacity
           style={styles.searchBar}
-          onPress={() => navigation.navigate('Search')}
+          onPress={() => navigation.navigate('Search', { mode: selectedMode })}
         >
           <Ionicons name="search" size={20} color={colors.textSecondary} />
           <Text style={styles.searchText}>Search salons, services...</Text>
         </TouchableOpacity>
 
+        {/* Service Mode Selector */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>What are you looking for?</Text>
+          <ServiceModeSelector
+            selectedMode={selectedMode}
+            onModeChange={handleModeChange}
+            showBothOption={false}
+          />
+          <Text style={styles.modeDescription}>{getModeDescription()}</Text>
+        </View>
+
+        {/* Nearby Salons (when location available) */}
+        {location && nearbySalons.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleRow}>
+                <Ionicons name="location" size={18} color={colors.primary} />
+                <Text style={styles.sectionTitle}>Nearby</Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => navigation.navigate('Search', { 
+                  mode: selectedMode,
+                  lat: location.latitude,
+                  lng: location.longitude,
+                })}
+              >
+                <Text style={styles.seeAll}>See All</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScrollContent}
+            >
+              {nearbySalons.map((salon) => (
+                <SalonCardHorizontal
+                  key={salon.id}
+                  salon={salon}
+                  onPress={() => navigation.navigate('SalonDetails', { salonId: salon.id })}
+                  showMode={!selectedMode}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Categories */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Categories</Text>
+          <Text style={styles.sectionTitlePlain}>Categories</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -127,7 +280,10 @@ const HomeScreen = () => {
               <TouchableOpacity
                 key={category.id}
                 style={styles.categoryCard}
-                onPress={() => navigation.navigate('Search', { category: category.slug })}
+                onPress={() => navigation.navigate('Search', { 
+                  category: category.slug,
+                  mode: selectedMode,
+                })}
               >
                 <View style={styles.categoryIcon}>
                   <Ionicons
@@ -145,8 +301,12 @@ const HomeScreen = () => {
         {/* Popular Salons */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Popular Salons</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Search')}>
+            <Text style={styles.sectionTitlePlain}>
+              {selectedMode === 'toHome' ? 'Home Service Providers' : 
+               selectedMode === 'toSalon' ? 'Popular Salons' : 
+               'Popular Salons'}
+            </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Search', { mode: selectedMode })}>
               <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>
@@ -154,16 +314,29 @@ const HomeScreen = () => {
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>Loading...</Text>
             </View>
+          ) : salons.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="storefront-outline" size={48} color={colors.textLight} />
+              <Text style={styles.emptyText}>No salons found</Text>
+              <Text style={styles.emptySubtext}>
+                {selectedMode ? 'Try changing the service mode' : 'Pull to refresh'}
+              </Text>
+            </View>
           ) : (
             salons.slice(0, 5).map((salon) => (
               <SalonCard
                 key={salon.id}
                 salon={salon}
                 onPress={() => navigation.navigate('SalonDetails', { salonId: salon.id })}
+                showMode={!selectedMode}
+                showAudience={true}
               />
             ))
           )}
         </View>
+
+        {/* Bottom spacing for tab bar */}
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -185,8 +358,14 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text,
   },
-  subGreeting: {
-    ...typography.body,
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+    gap: spacing.xs,
+  },
+  locationText: {
+    ...typography.bodySmall,
     color: colors.textSecondary,
   },
   notificationButton: {
@@ -242,16 +421,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   sectionTitle: {
     ...typography.h3,
     color: colors.text,
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
   },
+  sectionTitlePlain: {
+    ...typography.h3,
+    color: colors.text,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  modeDescription: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
   seeAll: {
     ...typography.body,
     color: colors.primary,
     fontWeight: '600',
+  },
+  horizontalScrollContent: {
+    paddingHorizontal: spacing.lg,
   },
   categoriesContainer: {
     paddingHorizontal: spacing.lg,
@@ -283,7 +482,20 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
   },
+  emptyContainer: {
+    padding: spacing.xl,
+    alignItems: 'center',
+  },
+  emptyText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+  },
+  emptySubtext: {
+    ...typography.bodySmall,
+    color: colors.textLight,
+    marginTop: spacing.xs,
+  },
 });
 
 export default HomeScreen;
-

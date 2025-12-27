@@ -1,14 +1,25 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-// ⚠️ IMPORTANT: Update this IP to your computer's local IP address
-// Find it with: ifconfig | grep "inet " or ip addr
-const MACHINE_IP = '192.168.1.8';
+// ===========================================
+// API CONFIGURATION
+// ===========================================
 
-// Always use IP address for development - works on both Android and web
-const API_URL = `http://${MACHINE_IP}:5000/api`;
+// Production API URL (Render)
+const PRODUCTION_API_URL = 'https://stylio-be.onrender.com/api';
+
+// Development API URL (local machine)
+// Update MACHINE_IP to your computer's IP for local development
+const MACHINE_IP = '192.168.1.8';
+const DEVELOPMENT_API_URL = `http://${MACHINE_IP}:5000/api`;
+
+// Toggle this to switch between production and development
+const USE_PRODUCTION = true;
+
+const API_URL = USE_PRODUCTION ? PRODUCTION_API_URL : DEVELOPMENT_API_URL;
 
 console.log('📡 API URL:', API_URL);
+console.log('🌐 Environment:', USE_PRODUCTION ? 'PRODUCTION' : 'DEVELOPMENT');
 
 // Token keys for secure storage
 const ACCESS_TOKEN_KEY = 'access_token';
@@ -17,7 +28,7 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 // Create axios instance with default config
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
-  timeout: 15000,
+  timeout: 30000, // 30 seconds for production (Render free tier can be slow on cold start)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -103,5 +114,8 @@ api.interceptors.response.use(
   }
 );
 
-export default api;
+// Export API URL for use in other parts of the app
+export const getApiUrl = () => API_URL;
+export const isProduction = () => USE_PRODUCTION;
 
+export default api;

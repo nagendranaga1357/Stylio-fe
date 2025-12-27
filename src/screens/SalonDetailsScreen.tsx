@@ -14,10 +14,53 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useSalons } from '../hooks';
 import { favoriteService } from '../services';
-import { Service } from '../types';
+import { Service, ServiceMode, AudienceType } from '../types';
 import { colors, spacing, borderRadius, typography, shadows } from '../utils/theme';
 import { formatCurrency, formatDuration, showToast } from '../utils';
 
+/**
+ * Get display info for service mode
+ */
+const getModeDisplay = (mode: ServiceMode | undefined): { 
+  label: string; 
+  color: string; 
+  icon: keyof typeof Ionicons.glyphMap 
+} | null => {
+  if (!mode) return null;
+  switch (mode) {
+    case 'toSalon':
+      return { label: 'To Salon', color: colors.primary, icon: 'storefront-outline' };
+    case 'toHome':
+      return { label: 'To Home', color: '#EC4899', icon: 'home-outline' };
+    case 'both':
+      return { label: 'Both Options', color: colors.info, icon: 'swap-horizontal-outline' };
+    default:
+      return null;
+  }
+};
+
+/**
+ * Get icon for audience type
+ */
+const getAudienceIcon = (audience: AudienceType): keyof typeof Ionicons.glyphMap => {
+  switch (audience) {
+    case 'men': return 'man-outline';
+    case 'women': return 'woman-outline';
+    case 'kids': return 'happy-outline';
+    case 'unisex': return 'people-outline';
+    default: return 'person-outline';
+  }
+};
+
+/**
+ * SalonDetailsScreen - V1 Enhanced
+ * 
+ * Displays detailed salon information with:
+ * - Service mode badge (To Salon / To Home / Both)
+ * - Audience indicators (Men / Women / Kids / Unisex)
+ * - Service selection with mode/audience filtering
+ * - Price level indicator
+ */
 const SalonDetailsScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -99,6 +142,9 @@ const SalonDetailsScreen = () => {
     );
   }
 
+  const modeDisplay = getModeDisplay(salon.mode);
+  const rating = salon.averageRating ?? salon.rating ?? 0;
+
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -112,6 +158,14 @@ const SalonDetailsScreen = () => {
             colors={['transparent', 'rgba(0,0,0,0.7)']}
             style={styles.heroGradient}
           />
+          
+          {/* Mode Badge Overlay */}
+          {modeDisplay && (
+            <View style={[styles.modeBadgeOverlay, { backgroundColor: modeDisplay.color }]}>
+              <Ionicons name={modeDisplay.icon} size={14} color={colors.textOnPrimary} />
+              <Text style={styles.modeBadgeOverlayText}>{modeDisplay.label}</Text>
+            </View>
+          )}
           
           {/* Back & Actions */}
           <View style={styles.heroActions}>
@@ -140,11 +194,32 @@ const SalonDetailsScreen = () => {
             <Text style={styles.salonName}>{salon.name}</Text>
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={18} color={colors.star} />
-              <Text style={styles.rating}>{salon.rating.toFixed(1)}</Text>
+              <Text style={styles.rating}>{rating.toFixed(1)}</Text>
               <Text style={styles.reviews}>({salon.totalReviews} reviews)</Text>
+              {salon.priceLevel && (
+                <>
+                  <Text style={styles.separator}>•</Text>
+                  <Text style={styles.priceLevel}>{'₹'.repeat(salon.priceLevel)}</Text>
+                </>
+              )}
             </View>
           </View>
         </View>
+
+        {/* Audience Badges (V1) */}
+        {salon.audience && salon.audience.length > 0 && (
+          <View style={styles.audienceContainer}>
+            <Text style={styles.audienceLabel}>Available for</Text>
+            <View style={styles.audienceBadges}>
+              {salon.audience.map((aud) => (
+                <View key={aud} style={styles.audienceBadge}>
+                  <Ionicons name={getAudienceIcon(aud)} size={16} color={colors.primary} />
+                  <Text style={styles.audienceBadgeText}>{aud}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Info Cards */}
         <View style={styles.infoCards}>
@@ -153,7 +228,8 @@ const SalonDetailsScreen = () => {
             <View style={styles.infoCardContent}>
               <Text style={styles.infoLabel}>Location</Text>
               <Text style={styles.infoValue} numberOfLines={2}>
-                {salon.address}, {salon.area?.name}
+                {salon.address}
+                {typeof salon.area === 'object' && salon.area?.name ? `, ${salon.area.name}` : ''}
               </Text>
             </View>
           </View>
@@ -203,33 +279,58 @@ const SalonDetailsScreen = () => {
           <Text style={styles.sectionTitle}>Services</Text>
           <Text style={styles.sectionSubtitle}>Select one or more services</Text>
           
-          {services.map((service) => {
-            const isSelected = selectedServices.includes(service.id);
-            return (
-              <TouchableOpacity
-                key={service.id}
-                style={[styles.serviceCard, isSelected && styles.serviceCardSelected]}
-                onPress={() => toggleService(service.id)}
-              >
-                <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                  {isSelected && <Ionicons name="checkmark" size={16} color={colors.textOnPrimary} />}
-                </View>
-                <View style={styles.serviceInfo}>
-                  <Text style={styles.serviceName}>{service.name}</Text>
-                  <Text style={styles.serviceDuration}>{formatDuration(service.durationMinutes)}</Text>
-                </View>
-                <View style={styles.servicePrice}>
-                  {service.discountedPrice && service.discountedPrice < service.price && (
-                    <Text style={styles.originalPrice}>{formatCurrency(service.price)}</Text>
-                  )}
-                  <Text style={styles.finalPrice}>
-                    {formatCurrency(service.discountedPrice || service.price)}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          {services.length === 0 ? (
+            <View style={styles.emptyServices}>
+              <Ionicons name="cut-outline" size={40} color={colors.textLight} />
+              <Text style={styles.emptyServicesText}>No services available</Text>
+            </View>
+          ) : (
+            services.map((service) => {
+              const isSelected = selectedServices.includes(service.id);
+              return (
+                <TouchableOpacity
+                  key={service.id}
+                  style={[styles.serviceCard, isSelected && styles.serviceCardSelected]}
+                  onPress={() => toggleService(service.id)}
+                >
+                  <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                    {isSelected && <Ionicons name="checkmark" size={16} color={colors.textOnPrimary} />}
+                  </View>
+                  <View style={styles.serviceInfo}>
+                    <View style={styles.serviceHeader}>
+                      <Text style={styles.serviceName}>{service.name}</Text>
+                      {/* Service audience badges */}
+                      {service.audience && service.audience.length > 0 && (
+                        <View style={styles.serviceAudienceBadges}>
+                          {service.audience.slice(0, 2).map((aud) => (
+                            <Ionicons 
+                              key={aud} 
+                              name={getAudienceIcon(aud)} 
+                              size={12} 
+                              color={colors.textLight} 
+                            />
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.serviceDuration}>{formatDuration(service.durationMinutes)}</Text>
+                  </View>
+                  <View style={styles.servicePrice}>
+                    {service.discountedPrice && service.discountedPrice < service.price && (
+                      <Text style={styles.originalPrice}>{formatCurrency(service.price)}</Text>
+                    )}
+                    <Text style={styles.finalPrice}>
+                      {formatCurrency(service.discountedPrice || service.price)}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
         </View>
+
+        {/* Bottom padding for safe scrolling */}
+        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* Bottom Bar */}
@@ -248,7 +349,8 @@ const SalonDetailsScreen = () => {
           disabled={selectedServices.length === 0}
         >
           <Text style={styles.bookButtonText}>
-            {selectedServices.length === 0 ? 'Select Services' : 'Book Now'}
+            {selectedServices.length === 0 ? 'Select Services' : 
+             salon.mode === 'toHome' ? 'Book Home Service' : 'Book Now'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -281,6 +383,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 150,
+  },
+  modeBadgeOverlay: {
+    position: 'absolute',
+    top: 50,
+    left: '50%',
+    transform: [{ translateX: -50 }],
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    gap: spacing.xs,
+  },
+  modeBadgeOverlayText: {
+    ...typography.bodySmall,
+    color: colors.textOnPrimary,
+    fontWeight: '600',
   },
   heroActions: {
     position: 'absolute',
@@ -328,6 +447,48 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textOnPrimary,
     opacity: 0.8,
+  },
+  separator: {
+    color: colors.textOnPrimary,
+    opacity: 0.6,
+    marginHorizontal: spacing.xs,
+  },
+  priceLevel: {
+    ...typography.body,
+    color: colors.success,
+    fontWeight: '600',
+  },
+  // Audience section (V1)
+  audienceContainer: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  audienceLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  audienceBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  audienceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight + '15',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    gap: spacing.xs,
+  },
+  audienceBadgeText: {
+    ...typography.bodySmall,
+    color: colors.primary,
+    fontWeight: '500',
+    textTransform: 'capitalize',
   },
   infoCards: {
     flexDirection: 'row',
@@ -388,6 +549,15 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: spacing.md,
   },
+  emptyServices: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  emptyServicesText: {
+    ...typography.body,
+    color: colors.textLight,
+    marginTop: spacing.sm,
+  },
   serviceCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -419,10 +589,21 @@ const styles = StyleSheet.create({
   serviceInfo: {
     flex: 1,
   },
+  serviceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   serviceName: {
     ...typography.body,
     color: colors.text,
     fontWeight: '500',
+    flex: 1,
+  },
+  serviceAudienceBadges: {
+    flexDirection: 'row',
+    gap: 2,
+    marginLeft: spacing.xs,
   },
   serviceDuration: {
     ...typography.caption,
@@ -478,4 +659,3 @@ const styles = StyleSheet.create({
 });
 
 export default SalonDetailsScreen;
-

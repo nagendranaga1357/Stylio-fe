@@ -31,7 +31,7 @@
       "bundler": "metro"
     },
     "extra": {
-      "apiUrl": "http://localhost:5000/api",
+      "apiUrl": "https://stylio-be.onrender.com/api",
       "eas": {
         "projectId": "edf6d31f-6c3a-4697-a820-4114a8e50897"
       }
