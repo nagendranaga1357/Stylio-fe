@@ -139,15 +139,15 @@ const HelpSupportScreen = () => {
 
           <View style={styles.contactButtons}>
             <TouchableOpacity style={styles.contactButton} onPress={handleCall}>
-              <Ionicons name="call" size={20} color={colors.primary} />
+              <Ionicons name="call" size={15} color={colors.primary} />
               <Text style={styles.contactButtonText}>Call</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.contactButton} onPress={handleEmail}>
-              <Ionicons name="mail" size={20} color={colors.primary} />
+              <Ionicons name="mail" size={15} color={colors.primary} />
               <Text style={styles.contactButtonText}>Email</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.contactButton, styles.whatsappButton]} onPress={handleWhatsApp}>
-              <Ionicons name="logo-whatsapp" size={20} color="#FFF" />
+              <Ionicons name="logo-whatsapp" size={15} color="#FFF" />
               <Text style={[styles.contactButtonText, { color: '#FFF' }]}>WhatsApp</Text>
             </TouchableOpacity>
           </View>
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
   },
   contactButtonText: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '600',
     color: colors.primary,
   },
