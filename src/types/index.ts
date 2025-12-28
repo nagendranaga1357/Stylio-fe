@@ -483,15 +483,75 @@ export interface UnifiedSearchResponse {
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
+  
+  // Salon Flow
+  ServiceListing: { 
+    service?: string; 
+    serviceName?: string; 
+    mode?: ServiceMode;
+  };
   SalonDetails: { salonId: string };
-  BookingFlow: { salon: Salon; services: Service[] };
-  SlotSelection: { salon: Salon; services: Service[] };
-  BookingConfirmation: { booking: Booking };
+  SlotSelection: { 
+    salon: Salon; 
+    services: Service[];
+    isHomeService?: boolean;
+  };
+  PaymentMethod: {
+    salon: any;
+    selectedService: any;
+    selectedServices: any[];
+    selectedDate: string;
+    selectedSlot: string;
+    totalAmount: number;
+    isHomeService?: boolean;
+    homeAddress?: string;
+    notes?: string;
+  };
+  BookingConfirmation: { 
+    booking?: Booking;
+    salon?: any;
+    selectedService?: any;
+    selectedServices?: any[];
+    selectedDate?: string;
+    selectedSlot?: string;
+    bookingId?: string;
+    bookingNumber?: string;
+    isHomeService?: boolean;
+    paymentDetails?: {
+      type: 'full' | 'advance';
+      amount: number;
+      totalAmount: number;
+      paymentId: string;
+      orderId: string;
+    };
+  };
+  
+  // Home Services Flow
+  HomeServices: undefined;
+  HomeProviderDetails: { provider: HomeProvider };
+  AllProviders: undefined;
+  
+  // Other
   Profile: undefined;
   Notifications: undefined;
   Favorites: undefined;
   Settings: undefined;
 };
+
+// Home Provider Type (for navigation)
+export interface HomeProvider {
+  id: string;
+  name: string;
+  image: string;
+  rating: number;
+  reviews: number;
+  distance: string;
+  location: string;
+  services: string[];
+  experience: string;
+  phone: string;
+  verified: boolean;
+}
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -507,6 +567,9 @@ export type MainTabParamList = {
     mode?: ServiceMode;
     audience?: AudienceType;
     q?: string;
+    lat?: number;
+    lng?: number;
+    promo?: string;
   } | undefined;
   Bookings: undefined;
   Shorts: undefined;

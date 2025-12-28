@@ -2,6 +2,7 @@ export { default as api, tokenStorage } from './api';
 export { default as authService } from './auth.service';
 export { default as salonService } from './salon.service';
 export { default as bookingService } from './booking.service';
+export { default as providerService } from './provider.service';
 
 // Additional services
 import api from './api';
@@ -87,6 +88,13 @@ export const serviceService = {
     const params = categoryId ? `?categoryId=${categoryId}` : '';
     const response = await api.get(`/services/types${params}`);
     return response.data.data.types || response.data.data || [];
+  },
+
+  /**
+   * Alias for getTypes (used by CategoryScreen)
+   */
+  async getServiceTypes(categoryId?: string): Promise<any[]> {
+    return this.getTypes(categoryId);
   },
 
   /**
@@ -358,5 +366,97 @@ export const promoCodeService = {
   async getActivePromoCodes(): Promise<PromoCode[]> {
     const response = await api.get('/promo-codes/active');
     return response.data.data.promoCodes || response.data.data || [];
+  },
+};
+
+/**
+ * User Service
+ * Handles user profile operations
+ */
+export const userService = {
+  async getProfile() {
+    const response = await api.get('/users/profile');
+    return response.data.data.user || response.data.data;
+  },
+
+  async updateProfile(data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    dateOfBirth?: string;
+    gender?: string;
+    address?: {
+      street?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+    };
+  }) {
+    const response = await api.patch('/users/profile', data);
+    return response.data.data.user || response.data.data;
+  },
+
+  async updateAvatar(uri: string) {
+    const formData = new FormData();
+    const filename = uri.split('/').pop() || 'avatar.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+    
+    formData.append('avatar', {
+      uri,
+      name: filename,
+      type,
+    } as any);
+
+    const response = await api.post('/users/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data.data;
+  },
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    const response = await api.patch('/users/password', {
+      currentPassword,
+      newPassword,
+    });
+    return response.data.data;
+  },
+
+  async deleteAccount() {
+    const response = await api.delete('/users/account');
+    return response.data;
+  },
+
+  async getAddresses() {
+    const response = await api.get('/users/addresses');
+    return response.data.data.addresses || response.data.data || [];
+  },
+
+  async addAddress(address: {
+    street: string;
+    city: string;
+    state: string;
+    pincode: string;
+    isDefault?: boolean;
+  }) {
+    const response = await api.post('/users/addresses', address);
+    return response.data.data;
+  },
+
+  async updateAddress(addressId: string, address: {
+    street?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    isDefault?: boolean;
+  }) {
+    const response = await api.patch(`/users/addresses/${addressId}`, address);
+    return response.data.data;
+  },
+
+  async deleteAddress(addressId: string) {
+    await api.delete(`/users/addresses/${addressId}`);
   },
 };
