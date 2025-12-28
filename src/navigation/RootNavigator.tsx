@@ -22,6 +22,9 @@ import HomeProviderDetailsScreen from '../screens/HomeProviderDetailsScreen';
 import PaymentMethodScreen from '../screens/PaymentMethodScreen';
 import CategoryScreen from '../screens/CategoryScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
+import HelpSupportScreen from '../screens/HelpSupportScreen';
+import TermsScreen from '../screens/TermsScreen';
+import PrivacyScreen from '../screens/PrivacyScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -116,6 +119,23 @@ const RootNavigator = () => {
           <Stack.Screen
             name="Favorites"
             component={FavoritesScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          
+          {/* Help & Support */}
+          <Stack.Screen
+            name="HelpSupport"
+            component={HelpSupportScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="Terms"
+            component={TermsScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="Privacy"
+            component={PrivacyScreen}
             options={{ animation: 'slide_from_right' }}
           />
         </>

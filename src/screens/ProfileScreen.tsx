@@ -12,6 +12,8 @@ import {
   Alert,
   Linking,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -369,17 +371,17 @@ const ProfileScreen = () => {
               icon="help-circle-outline"
               title="Help & Support"
               subtitle="Get help with your bookings"
-              onPress={() => openLink('mailto:support@stylio.app?subject=Help%20Request')}
+              onPress={() => navigation.navigate('HelpSupport' as never)}
             />
             <MenuItem
               icon="document-text-outline"
               title="Terms & Conditions"
-              onPress={() => openLink('https://stylio.app/terms')}
+              onPress={() => navigation.navigate('Terms' as never)}
             />
             <MenuItem
               icon="shield-outline"
               title="Privacy Policy"
-              onPress={() => openLink('https://stylio.app/privacy')}
+              onPress={() => navigation.navigate('Privacy' as never)}
             />
           </View>
         </View>
@@ -536,7 +538,10 @@ const ProfileScreen = () => {
         transparent={true}
         onRequestClose={() => setShowAddressModal(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <TouchableOpacity onPress={() => setShowAddressModal(false)}>
@@ -552,52 +557,54 @@ const ProfileScreen = () => {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Street Address</Text>
-              <TextInput
-                style={styles.formInput}
-                value={street}
-                onChangeText={setStreet}
-                placeholder="Enter street address"
-                placeholderTextColor={colors.textLight}
-              />
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Street Address</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={street}
+                  onChangeText={setStreet}
+                  placeholder="Enter street address"
+                  placeholderTextColor={colors.textLight}
+                />
+              </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>City</Text>
-              <TextInput
-                style={styles.formInput}
-                value={city}
-                onChangeText={setCity}
-                placeholder="Enter city"
-                placeholderTextColor={colors.textLight}
-              />
-            </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>City</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={city}
+                  onChangeText={setCity}
+                  placeholder="Enter city"
+                  placeholderTextColor={colors.textLight}
+                />
+              </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>State</Text>
-              <TextInput
-                style={styles.formInput}
-                value={state}
-                onChangeText={setState}
-                placeholder="Enter state"
-                placeholderTextColor={colors.textLight}
-              />
-            </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>State</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={state}
+                  onChangeText={setState}
+                  placeholder="Enter state"
+                  placeholderTextColor={colors.textLight}
+                />
+              </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Pincode</Text>
-              <TextInput
-                style={styles.formInput}
-                value={pincode}
-                onChangeText={setPincode}
-                placeholder="Enter pincode"
-                placeholderTextColor={colors.textLight}
-                keyboardType="numeric"
-              />
-            </View>
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Pincode</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={pincode}
+                  onChangeText={setPincode}
+                  placeholder="Enter pincode"
+                  placeholderTextColor={colors.textLight}
+                  keyboardType="numeric"
+                />
+              </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

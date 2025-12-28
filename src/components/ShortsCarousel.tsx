@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 
 import { colors, spacing } from '../utils/theme';
 
@@ -463,6 +465,7 @@ const FullScreenPlayer = ({
  * ShortsCarousel - Horizontal carousel of short videos for HomeScreen
  */
 const ShortsCarousel = ({ onViewAll }: Props) => {
+  const navigation = useNavigation<any>();
   const [selectedShort, setSelectedShort] = useState<ShortVideo | null>(null);
   const [isPlayerVisible, setIsPlayerVisible] = useState(false);
 
@@ -489,12 +492,13 @@ const ShortsCarousel = ({ onViewAll }: Props) => {
             <Text style={styles.liveBadgeText}>NEW</Text>
           </View>
         </View>
-        {onViewAll && (
-          <TouchableOpacity onPress={onViewAll} style={styles.viewAllButton}>
-            <Text style={styles.viewAllText}>View All</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('Shorts')}
+          style={styles.seeAllButton}
+        >
+          <Text style={styles.viewAllText}>See All</Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+        </TouchableOpacity>
       </View>
       
       {/* Shorts List */}
@@ -565,6 +569,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFF',
   },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -585,7 +594,7 @@ const styles = StyleSheet.create({
     marginRight: SHORT_SPACING,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: colors.darkGray,
+    backgroundColor: '#333',
   },
   shortThumbnail: {
     ...StyleSheet.absoluteFillObject,

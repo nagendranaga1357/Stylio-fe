@@ -565,8 +565,9 @@ const HomeScreen = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Categories</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Categories', { mode: selectedMode })}>
+            <TouchableOpacity onPress={() => navigation.navigate('Categories', { mode: selectedMode })} style={styles.seeAllButton}>
               <Text style={styles.seeAll}>See All</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
             </TouchableOpacity>
           </View>
           <CategoryCarousel 
@@ -592,8 +593,9 @@ const HomeScreen = () => {
                   lat: location.latitude,
                   lng: location.longitude,
                 })}
-              >
+              style={styles.seeAllButton}>
                 <Text style={styles.seeAll}>See All</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
               </TouchableOpacity>
             </View>
             <ScrollView
@@ -623,8 +625,9 @@ const HomeScreen = () => {
                 </View>
                 <Text style={styles.sectionTitle}>Trending Now</Text>
               </View>
-              <TouchableOpacity onPress={() => navigation.navigate('Search', { sortBy: 'popular' })}>
+              <TouchableOpacity onPress={() => navigation.navigate('Search', { sortBy: 'popular' })} style={styles.seeAllButton}>
                 <Text style={styles.seeAll}>See All</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.primary} />
               </TouchableOpacity>
             </View>
             <ScrollView
@@ -646,17 +649,6 @@ const HomeScreen = () => {
 
         {/* Shorts Section - YouTube/Instagram Reels Style */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <View style={styles.shortsIcon}>
-                <MaterialCommunityIcons name="play-box-multiple" size={16} color="#FF0000" />
-              </View>
-              <Text style={styles.sectionTitle}>Shorts</Text>
-            </View>
-            <TouchableOpacity onPress={() => navigation.navigate('Shorts')}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
           <ShortsCarousel />
         </View>
 
@@ -666,8 +658,9 @@ const HomeScreen = () => {
             <Text style={styles.sectionTitle}>
               {selectedMode === 'toHome' ? 'Home Service Providers' : 'Popular Salons'}
             </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Search', { mode: selectedMode })}>
+            <TouchableOpacity onPress={() => navigation.navigate('Search', { mode: selectedMode })} style={styles.seeAllButton}>
               <Text style={styles.seeAll}>See All</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
             </TouchableOpacity>
           </View>
           
@@ -994,6 +987,11 @@ const styles = StyleSheet.create({
     fontSize: typography.bodySmall.fontSize,
     color: colors.primary,
     fontWeight: '600',
+  },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
   },
   nearbyIcon: {
     width: 28,

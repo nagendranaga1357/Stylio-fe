@@ -9,6 +9,12 @@ import {
   ActivityIndicator,
   StatusBar,
   Image,
+  Share,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -16,7 +22,8 @@ import { useIsFocused } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { colors, spacing } from '../utils/theme';
+import { colors, spacing, borderRadius } from '../utils/theme';
+import { showToast } from '../utils';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = 30;
@@ -207,6 +214,15 @@ const SAMPLE_SHORTS: ShortVideo[] = [
   },
 ];
 
+// Sample comments for demonstration
+const SAMPLE_COMMENTS = [
+  { id: '1', user: 'hair_lover', text: 'This is amazing! 🔥', time: '2h ago', likes: 45 },
+  { id: '2', user: 'style_queen', text: 'I need to try this look!', time: '4h ago', likes: 23 },
+  { id: '3', user: 'beauty_guru', text: 'Tutorial please! 🙏', time: '6h ago', likes: 89 },
+  { id: '4', user: 'fashionista', text: 'The skill level is insane', time: '8h ago', likes: 12 },
+  { id: '5', user: 'grooming_pro', text: 'Clean work! 💯', time: '12h ago', likes: 56 },
+];
+
 /**
  * Single Short Item Component with Video Player
  */
@@ -215,17 +231,29 @@ const ShortItem = ({
   isActive, 
   isScreenFocused,
   isLiked, 
+  isBookmarked,
+  isFollowing,
   isMuted,
   onLike,
+  onBookmark,
+  onFollow,
   onMute,
+  onComment,
+  onShare,
 }: { 
   item: ShortVideo; 
   isActive: boolean;
   isScreenFocused: boolean;
   isLiked: boolean;
+  isBookmarked: boolean;
+  isFollowing: boolean;
   isMuted: boolean;
   onLike: () => void;
+  onBookmark: () => void;
+  onFollow: () => void;
   onMute: () => void;
+  onComment: () => void;
+  onShare: () => void;
 }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
@@ -362,15 +390,22 @@ const ShortItem = ({
       {/* Right Side Actions */}
       <View style={styles.actionsContainer}>
         {/* Creator Avatar */}
-        <TouchableOpacity style={styles.avatarContainer}>
+        <TouchableOpacity style={styles.avatarContainer} onPress={onFollow}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
               {item.creator.name.charAt(0)}
             </Text>
           </View>
-          <View style={styles.followBadge}>
-            <Ionicons name="add" size={12} color="#FFF" />
-          </View>
+          {!isFollowing && (
+            <View style={styles.followBadge}>
+              <Ionicons name="add" size={12} color="#FFF" />
+            </View>
+          )}
+          {isFollowing && (
+            <View style={[styles.followBadge, styles.followingBadge]}>
+              <Ionicons name="checkmark" size={10} color="#FFF" />
+            </View>
+          )}
         </TouchableOpacity>
 
         {/* Like */}
@@ -387,24 +422,31 @@ const ShortItem = ({
         </TouchableOpacity>
 
         {/* Comment */}
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={onComment}>
           <Ionicons name="chatbubble-ellipses-outline" size={28} color="#FFF" />
           <Text style={styles.actionText}>{item.comments}</Text>
         </TouchableOpacity>
 
         {/* Share */}
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={onShare}>
           <Ionicons name="paper-plane-outline" size={26} color="#FFF" />
           <Text style={styles.actionText}>{item.shares}</Text>
         </TouchableOpacity>
 
         {/* Bookmark */}
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="bookmark-outline" size={26} color="#FFF" />
+        <TouchableOpacity style={styles.actionButton} onPress={onBookmark}>
+          <Ionicons 
+            name={isBookmarked ? "bookmark" : "bookmark-outline"} 
+            size={26} 
+            color={isBookmarked ? "#FFD700" : "#FFF"} 
+          />
         </TouchableOpacity>
 
         {/* More */}
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => showToast.info('More Options', 'Report, Download, Copy Link')}
+        >
           <Ionicons name="ellipsis-horizontal" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
@@ -484,7 +526,12 @@ const ShortItem = ({
 const ShortsScreen = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [likedShorts, setLikedShorts] = useState<Set<string>>(new Set());
+  const [bookmarkedShorts, setBookmarkedShorts] = useState<Set<string>>(new Set());
+  const [followingCreators, setFollowingCreators] = useState<Set<string>>(new Set());
   const [isMuted, setIsMuted] = useState(false);
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
+  const [selectedShortId, setSelectedShortId] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState('');
   const flatListRef = useRef<FlatList>(null);
   
   // Check if screen is focused (to pause when navigating away)
@@ -506,8 +553,38 @@ const ShortsScreen = () => {
       const newSet = new Set(prev);
       if (newSet.has(shortId)) {
         newSet.delete(shortId);
+        showToast.info('Removed', 'Removed from liked');
       } else {
         newSet.add(shortId);
+        showToast.success('Liked!', 'Added to your liked videos');
+      }
+      return newSet;
+    });
+  };
+
+  const handleBookmark = (shortId: string) => {
+    setBookmarkedShorts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(shortId)) {
+        newSet.delete(shortId);
+        showToast.info('Removed', 'Removed from saved');
+      } else {
+        newSet.add(shortId);
+        showToast.success('Saved!', 'Added to your saved videos');
+      }
+      return newSet;
+    });
+  };
+
+  const handleFollow = (creatorUsername: string) => {
+    setFollowingCreators(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(creatorUsername)) {
+        newSet.delete(creatorUsername);
+        showToast.info('Unfollowed', `Unfollowed ${creatorUsername}`);
+      } else {
+        newSet.add(creatorUsername);
+        showToast.success('Following!', `Now following ${creatorUsername}`);
       }
       return newSet;
     });
@@ -517,8 +594,33 @@ const ShortsScreen = () => {
     setIsMuted(prev => !prev);
   };
 
+  const handleComment = (shortId: string) => {
+    setSelectedShortId(shortId);
+    setShowCommentsModal(true);
+  };
+
+  const handleShare = async (item: ShortVideo) => {
+    try {
+      await Share.share({
+        message: `Check out this amazing video: ${item.title}\n\nWatch more on Stylio App!`,
+        title: item.title,
+      });
+    } catch (error) {
+      showToast.error('Error', 'Failed to share');
+    }
+  };
+
+  const handleSubmitComment = () => {
+    if (!commentText.trim()) return;
+    showToast.success('Comment Posted!', 'Your comment has been added');
+    setCommentText('');
+    // In real app, would post to API here
+  };
+
   const renderShort = ({ item, index }: { item: ShortVideo; index: number }) => {
     const isLiked = likedShorts.has(item.id);
+    const isBookmarked = bookmarkedShorts.has(item.id);
+    const isFollowing = followingCreators.has(item.creator.username);
     const isActive = index === currentIndex;
 
     return (
@@ -527,9 +629,15 @@ const ShortsScreen = () => {
         isActive={isActive}
         isScreenFocused={isFocused}
         isLiked={isLiked}
+        isBookmarked={isBookmarked}
+        isFollowing={isFollowing}
         isMuted={isMuted}
         onLike={() => handleLike(item.id)}
+        onBookmark={() => handleBookmark(item.id)}
+        onFollow={() => handleFollow(item.creator.username)}
         onMute={handleMute}
+        onComment={() => handleComment(item.id)}
+        onShare={() => handleShare(item)}
       />
     );
   };
@@ -576,6 +684,81 @@ const ShortsScreen = () => {
         windowSize={3}
         initialNumToRender={2}
       />
+
+      {/* Comments Modal */}
+      <Modal
+        visible={showCommentsModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCommentsModal(false)}
+      >
+        <View style={styles.commentsModalOverlay}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.commentsModalContent}
+          >
+            {/* Modal Header */}
+            <View style={styles.commentsHeader}>
+              <Text style={styles.commentsTitle}>Comments</Text>
+              <TouchableOpacity onPress={() => setShowCommentsModal(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Comments List */}
+            <ScrollView style={styles.commentsList} showsVerticalScrollIndicator={false}>
+              {SAMPLE_COMMENTS.map((comment) => (
+                <View key={comment.id} style={styles.commentItem}>
+                  <View style={styles.commentAvatar}>
+                    <Text style={styles.commentAvatarText}>
+                      {comment.user.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.commentContent}>
+                    <View style={styles.commentHeader}>
+                      <Text style={styles.commentUser}>@{comment.user}</Text>
+                      <Text style={styles.commentTime}>{comment.time}</Text>
+                    </View>
+                    <Text style={styles.commentText}>{comment.text}</Text>
+                    <View style={styles.commentActions}>
+                      <TouchableOpacity style={styles.commentAction}>
+                        <Ionicons name="heart-outline" size={16} color={colors.textLight} />
+                        <Text style={styles.commentActionText}>{comment.likes}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.commentAction}>
+                        <Ionicons name="chatbubble-outline" size={16} color={colors.textLight} />
+                        <Text style={styles.commentActionText}>Reply</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+
+            {/* Comment Input */}
+            <View style={styles.commentInputContainer}>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Add a comment..."
+                placeholderTextColor={colors.textLight}
+                value={commentText}
+                onChangeText={setCommentText}
+              />
+              <TouchableOpacity 
+                style={[styles.sendButton, !commentText.trim() && styles.sendButtonDisabled]}
+                onPress={handleSubmitComment}
+                disabled={!commentText.trim()}
+              >
+                <Ionicons 
+                  name="send" 
+                  size={20} 
+                  color={commentText.trim() ? colors.primary : colors.textLight} 
+                />
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -833,6 +1016,122 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#FFF',
     fontWeight: '500',
+  },
+  followingBadge: {
+    backgroundColor: colors.success,
+  },
+  // Comments Modal Styles
+  commentsModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  commentsModalContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+    minHeight: '50%',
+  },
+  commentsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  commentsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  commentsList: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  commentItem: {
+    flexDirection: 'row',
+    marginBottom: spacing.md,
+  },
+  commentAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  commentAvatarText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  commentContent: {
+    flex: 1,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: 4,
+  },
+  commentUser: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  commentTime: {
+    fontSize: 11,
+    color: colors.textLight,
+  },
+  commentText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  commentActions: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.xs,
+  },
+  commentAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  commentActionText: {
+    fontSize: 12,
+    color: colors.textLight,
+  },
+  commentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: 14,
+    color: colors.text,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.backgroundSecondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
   },
 });
 
