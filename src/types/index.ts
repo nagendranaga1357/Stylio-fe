@@ -127,6 +127,7 @@ export interface Salon {
   location?: GeoLocation;
   // Contact
   phone?: string;
+  mobile?: string;
   email?: string;
   website?: string;
   // Operating hours

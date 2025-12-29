@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,16 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Linking,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 import { useSalons } from '../hooks';
 import { favoriteService } from '../services';
@@ -76,6 +82,42 @@ const SalonDetailsScreen = () => {
 
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const carouselRef = useRef<FlatList>(null);
+
+  // Get all images (cover + gallery)
+  const getAllImages = () => {
+    if (!salon) return [];
+    const images: string[] = [];
+    
+    // Add cover image first
+    if (salon.coverImage) {
+      images.push(salon.coverImage);
+    }
+    
+    // Add gallery images
+    if (salon.galleryImages && Array.isArray(salon.galleryImages)) {
+      salon.galleryImages.forEach((img: any) => {
+        const imageUrl = typeof img === 'string' ? img : img.image;
+        if (imageUrl && !images.includes(imageUrl)) {
+          images.push(imageUrl);
+        }
+      });
+    }
+    
+    return images.length > 0 ? images : ['https://via.placeholder.com/400x300?text=No+Image'];
+  };
+
+  // Handle phone call
+  const handleCall = () => {
+    const phoneNumber = salon?.phone || salon?.mobile;
+    if (phoneNumber) {
+      const cleanNumber = phoneNumber.replace(/[^0-9+]/g, '');
+      Linking.openURL(`tel:${cleanNumber}`);
+    } else {
+      showToast.error('Error', 'Phone number not available');
+    }
+  };
 
   useEffect(() => {
     if (salonId) {
@@ -145,19 +187,65 @@ const SalonDetailsScreen = () => {
   const modeDisplay = getModeDisplay(salon.mode);
   const rating = salon.averageRating ?? salon.rating ?? 0;
 
+  const images = getAllImages();
+
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Hero Image */}
+        {/* Hero Image Carousel */}
         <View style={styles.heroContainer}>
-          <Image
-            source={{ uri: salon.coverImage || 'https://via.placeholder.com/400x300' }}
-            style={styles.heroImage}
+          <FlatList
+            ref={carouselRef}
+            data={images}
+            keyExtractor={(item, index) => `${index}-${item}`}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) => {
+              const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+              setCurrentImageIndex(index);
+            }}
+            renderItem={({ item }) => (
+              <Image
+                source={{ uri: item }}
+                style={styles.heroImage}
+                resizeMode="cover"
+              />
+            )}
           />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.7)']}
             style={styles.heroGradient}
           />
+          
+          {/* Image Counter */}
+          {images.length > 1 && (
+            <View style={styles.imageCounter}>
+              <Ionicons name="images-outline" size={14} color={colors.textOnPrimary} />
+              <Text style={styles.imageCounterText}>
+                {currentImageIndex + 1}/{images.length}
+              </Text>
+            </View>
+          )}
+          
+          {/* Pagination Dots */}
+          {images.length > 1 && (
+            <View style={styles.paginationDots}>
+              {images.map((_, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.dot,
+                    currentImageIndex === index && styles.dotActive
+                  ]}
+                  onPress={() => {
+                    carouselRef.current?.scrollToIndex({ index, animated: true });
+                    setCurrentImageIndex(index);
+                  }}
+                />
+              ))}
+            </View>
+          )}
           
           {/* Mode Badge Overlay */}
           {modeDisplay && (
@@ -243,6 +331,27 @@ const SalonDetailsScreen = () => {
             </View>
           </View>
         </View>
+
+        {/* Phone Number Card */}
+        {(salon.phone || salon.mobile) && (
+          <TouchableOpacity 
+            style={styles.phoneCard}
+            onPress={handleCall}
+            activeOpacity={0.7}
+          >
+            <View style={styles.phoneIconContainer}>
+              <Ionicons name="call" size={24} color={colors.textOnPrimary} />
+            </View>
+            <View style={styles.phoneContent}>
+              <Text style={styles.phoneLabel}>Call Now</Text>
+              <Text style={styles.phoneNumber}>{salon.phone || salon.mobile}</Text>
+              {salon.mobile && salon.phone && salon.mobile !== salon.phone && (
+                <Text style={styles.phoneSecondary}>{salon.mobile}</Text>
+              )}
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        )}
 
         {/* Features */}
         {salon.features && (
@@ -374,8 +483,45 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   heroImage: {
-    width: '100%',
-    height: '100%',
+    width: SCREEN_WIDTH,
+    height: 280,
+  },
+  imageCounter: {
+    position: 'absolute',
+    top: 50,
+    right: spacing.md + 50 + 50 + spacing.sm * 2, // Account for action buttons
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    gap: 4,
+  },
+  imageCounterText: {
+    ...typography.caption,
+    color: colors.textOnPrimary,
+    fontWeight: '600',
+  },
+  paginationDots: {
+    position: 'absolute',
+    bottom: 80,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  dotActive: {
+    width: 24,
+    backgroundColor: colors.textOnPrimary,
   },
   heroGradient: {
     position: 'absolute',
@@ -515,6 +661,45 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.text,
     fontWeight: '500',
+  },
+  // Phone Card Styles
+  phoneCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundSecondary,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+  },
+  phoneIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.success,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  phoneContent: {
+    flex: 1,
+  },
+  phoneLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  phoneNumber: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  phoneSecondary: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   featuresContainer: {
     flexDirection: 'row',
