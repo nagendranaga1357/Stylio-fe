@@ -15,6 +15,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Linking,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -24,6 +26,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { colors, spacing, borderRadius } from '../utils/theme';
 import { showToast } from '../utils';
+
+// Report email
+const REPORT_EMAIL = 'balajinagendra567@gmail.com';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const TAB_BAR_HEIGHT = 30;
@@ -240,6 +245,7 @@ const ShortItem = ({
   onMute,
   onComment,
   onShare,
+  onReport,
 }: { 
   item: ShortVideo; 
   isActive: boolean;
@@ -254,6 +260,7 @@ const ShortItem = ({
   onMute: () => void;
   onComment: () => void;
   onShare: () => void;
+  onReport: () => void;
 }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
@@ -265,13 +272,23 @@ const ShortItem = ({
     player.muted = isMuted;
   });
 
+  // Reset pause state when active item changes
+  useEffect(() => {
+    if (isActive) {
+      setIsPaused(false);
+      setShowPlayIcon(false);
+    }
+  }, [isActive]);
+
   // Handle play/pause based on visibility and screen focus
   useEffect(() => {
     if (isActive && isScreenFocused && !isPaused) {
       player.play();
-      setIsBuffering(false);
     } else {
       player.pause();
+      if (!isActive) {
+        setShowPlayIcon(false);
+      }
     }
   }, [isActive, isScreenFocused, isPaused, player]);
 
@@ -442,10 +459,10 @@ const ShortItem = ({
           />
         </TouchableOpacity>
 
-        {/* More */}
+        {/* More/Report */}
         <TouchableOpacity 
           style={styles.actionButton}
-          onPress={() => showToast.info('More Options', 'Report, Download, Copy Link')}
+          onPress={onReport}
         >
           <Ionicons name="ellipsis-horizontal" size={24} color="#FFF" />
         </TouchableOpacity>
@@ -523,6 +540,14 @@ const ShortItem = ({
 /**
  * ShortsScreen - YouTube Shorts / Instagram Reels Style with Video Playback
  */
+// Report reasons
+const REPORT_REASONS = [
+  { id: 'inappropriate', label: 'Inappropriate Content' },
+  { id: 'spam', label: 'Spam or Misleading' },
+  { id: 'copyright', label: 'Copyright Violation' },
+  { id: 'other', label: 'Other' },
+];
+
 const ShortsScreen = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [likedShorts, setLikedShorts] = useState<Set<string>>(new Set());
@@ -532,10 +557,20 @@ const ShortsScreen = () => {
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [selectedShortId, setSelectedShortId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportShortId, setReportShortId] = useState<string | null>(null);
+  const [selectedReasons, setSelectedReasons] = useState<Set<string>>(new Set());
+  const [customReportMessage, setCustomReportMessage] = useState('');
   const flatListRef = useRef<FlatList>(null);
   
   // Check if screen is focused (to pause when navigating away)
   const isFocused = useIsFocused();
+
+  // Filter shorts based on favorites toggle
+  const displayedShorts = showFavorites 
+    ? SAMPLE_SHORTS.filter(s => bookmarkedShorts.has(s.id))
+    : SAMPLE_SHORTS;
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
@@ -617,6 +652,61 @@ const ShortsScreen = () => {
     // In real app, would post to API here
   };
 
+  const handleReport = (shortId: string) => {
+    setReportShortId(shortId);
+    setSelectedReasons(new Set());
+    setCustomReportMessage('');
+    setShowReportModal(true);
+  };
+
+  const toggleReportReason = (reasonId: string) => {
+    setSelectedReasons(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(reasonId)) {
+        newSet.delete(reasonId);
+      } else {
+        newSet.add(reasonId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSubmitReport = async () => {
+    if (selectedReasons.size === 0 && !customReportMessage.trim()) {
+      showToast.error('Error', 'Please select a reason or provide details');
+      return;
+    }
+
+    const reportedShort = SAMPLE_SHORTS.find(s => s.id === reportShortId);
+    const reasonLabels = REPORT_REASONS
+      .filter(r => selectedReasons.has(r.id))
+      .map(r => r.label)
+      .join(', ');
+
+    const subject = encodeURIComponent(`Report: Short Video - ${reportedShort?.title || 'Unknown'}`);
+    const body = encodeURIComponent(
+      `Short Video Report\n\n` +
+      `Video ID: ${reportShortId}\n` +
+      `Video Title: ${reportedShort?.title || 'N/A'}\n` +
+      `Creator: ${reportedShort?.creator.name || 'N/A'}\n\n` +
+      `Reason(s): ${reasonLabels || 'None selected'}\n\n` +
+      `Additional Details:\n${customReportMessage || 'No additional details provided'}\n\n` +
+      `Reported from Stylio App`
+    );
+
+    try {
+      await Linking.openURL(`mailto:${REPORT_EMAIL}?subject=${subject}&body=${body}`);
+      setShowReportModal(false);
+      showToast.success('Report Submitted', 'Thank you for your feedback');
+    } catch (error) {
+      Alert.alert(
+        'Report Submitted',
+        `Your report has been noted. Please email ${REPORT_EMAIL} if you have additional concerns.`,
+        [{ text: 'OK', onPress: () => setShowReportModal(false) }]
+      );
+    }
+  };
+
   const renderShort = ({ item, index }: { item: ShortVideo; index: number }) => {
     const isLiked = likedShorts.has(item.id);
     const isBookmarked = bookmarkedShorts.has(item.id);
@@ -638,6 +728,7 @@ const ShortsScreen = () => {
         onMute={handleMute}
         onComment={() => handleComment(item.id)}
         onShare={() => handleShare(item)}
+        onReport={() => handleReport(item.id)}
       />
     );
   };
@@ -649,41 +740,80 @@ const ShortsScreen = () => {
       {/* Header */}
       <SafeAreaView edges={['top']} style={styles.headerContainer}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Shorts</Text>
+          <View style={styles.headerLeft}>
+            {showFavorites && (
+              <TouchableOpacity 
+                style={styles.backButton}
+                onPress={() => {
+                  setShowFavorites(false);
+                  setCurrentIndex(0);
+                }}
+              >
+                <Ionicons name="arrow-back" size={24} color="#FFF" />
+              </TouchableOpacity>
+            )}
+            <Text style={styles.headerTitle}>
+              {showFavorites ? 'Favorites' : 'Shorts'}
+            </Text>
+          </View>
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.headerButton}>
               <Ionicons name="search-outline" size={24} color="#FFF" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton}>
-              <Ionicons name="videocam-outline" size={24} color="#FFF" />
-            </TouchableOpacity>
+            {!showFavorites && (
+              <TouchableOpacity 
+                style={styles.headerButton}
+                onPress={() => {
+                  setShowFavorites(true);
+                  setCurrentIndex(0);
+                }}
+              >
+                <Ionicons name="heart-outline" size={24} color="#FFF" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </SafeAreaView>
 
       {/* Shorts Feed */}
-      <FlatList
-        ref={flatListRef}
-        data={SAMPLE_SHORTS}
-        renderItem={renderShort}
-        keyExtractor={(item) => item.id}
-        pagingEnabled
-        showsVerticalScrollIndicator={false}
-        snapToInterval={SHORT_HEIGHT}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        getItemLayout={(_, index) => ({
-          length: SHORT_HEIGHT,
-          offset: SHORT_HEIGHT * index,
-          index,
-        })}
-        removeClippedSubviews
-        maxToRenderPerBatch={2}
-        windowSize={3}
-        initialNumToRender={2}
-      />
+      {displayedShorts.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="heart-outline" size={64} color="rgba(255,255,255,0.5)" />
+          <Text style={styles.emptyTitle}>No Favorites Yet</Text>
+          <Text style={styles.emptyText}>
+            Bookmark shorts to see them here
+          </Text>
+          <TouchableOpacity 
+            style={styles.emptyButton}
+            onPress={() => setShowFavorites(false)}
+          >
+            <Text style={styles.emptyButtonText}>Browse Shorts</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={displayedShorts}
+          renderItem={renderShort}
+          keyExtractor={(item) => item.id}
+          pagingEnabled
+          showsVerticalScrollIndicator={false}
+          snapToInterval={SHORT_HEIGHT}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          getItemLayout={(_, index) => ({
+            length: SHORT_HEIGHT,
+            offset: SHORT_HEIGHT * index,
+            index,
+          })}
+          removeClippedSubviews
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          initialNumToRender={2}
+        />
+      )}
 
       {/* Comments Modal */}
       <Modal
@@ -759,6 +889,85 @@ const ShortsScreen = () => {
           </KeyboardAvoidingView>
         </View>
       </Modal>
+
+      {/* Report Modal */}
+      <Modal
+        visible={showReportModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowReportModal(false)}
+      >
+        <View style={styles.reportModalOverlay}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.reportModalContent}
+          >
+            {/* Modal Header */}
+            <View style={styles.reportHeader}>
+              <Text style={styles.reportTitle}>Report Content</Text>
+              <TouchableOpacity onPress={() => setShowReportModal(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.reportBody} showsVerticalScrollIndicator={false}>
+              <Text style={styles.reportSubtitle}>
+                Why are you reporting this content?
+              </Text>
+
+              {/* Report Reasons Checkboxes */}
+              {REPORT_REASONS.map((reason) => (
+                <TouchableOpacity
+                  key={reason.id}
+                  style={styles.reportCheckboxRow}
+                  onPress={() => toggleReportReason(reason.id)}
+                >
+                  <View style={[
+                    styles.reportCheckbox,
+                    selectedReasons.has(reason.id) && styles.reportCheckboxSelected
+                  ]}>
+                    {selectedReasons.has(reason.id) && (
+                      <Ionicons name="checkmark" size={16} color="#FFF" />
+                    )}
+                  </View>
+                  <Text style={styles.reportCheckboxLabel}>{reason.label}</Text>
+                </TouchableOpacity>
+              ))}
+
+              {/* Custom Message */}
+              <Text style={styles.reportMessageLabel}>Additional Details (Optional)</Text>
+              <TextInput
+                style={styles.reportMessageInput}
+                placeholder="Please provide more details about the issue..."
+                placeholderTextColor={colors.textLight}
+                value={customReportMessage}
+                onChangeText={setCustomReportMessage}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+
+              <Text style={styles.reportNote}>
+                Your report will be sent to {REPORT_EMAIL}
+              </Text>
+            </ScrollView>
+
+            {/* Submit Button */}
+            <View style={styles.reportFooter}>
+              <TouchableOpacity
+                style={[
+                  styles.reportSubmitButton,
+                  (selectedReasons.size === 0 && !customReportMessage.trim()) && styles.reportSubmitButtonDisabled
+                ]}
+                onPress={handleSubmitReport}
+              >
+                <Ionicons name="send" size={18} color="#FFF" />
+                <Text style={styles.reportSubmitButtonText}>Submit Report</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -781,6 +990,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20,
   },
   headerTitle: {
     fontSize: 22,
@@ -1133,6 +1355,161 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     opacity: 0.5,
   },
+  // Header Favorites
+  headerButtonActive: {
+    backgroundColor: 'rgba(255,59,92,0.2)',
+    borderRadius: 20,
+  },
+  favoritesIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    marginHorizontal: spacing.md,
+    borderRadius: borderRadius.full,
+  },
+  favoritesIndicatorText: {
+    fontSize: 12,
+    color: '#FFF',
+    fontWeight: '600',
+  },
+  // Empty State
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFF',
+    marginTop: spacing.md,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  emptyButton: {
+    marginTop: spacing.lg,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.full,
+  },
+  emptyButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  // Report Modal Styles
+  reportModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  reportModalContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  reportTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  reportBody: {
+    padding: spacing.md,
+  },
+  reportSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  reportCheckboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    gap: spacing.md,
+  },
+  reportCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reportCheckboxSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  reportCheckboxLabel: {
+    fontSize: 15,
+    color: colors.text,
+    flex: 1,
+  },
+  reportMessageLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  reportMessageInput: {
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    fontSize: 14,
+    color: colors.text,
+    minHeight: 100,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  reportNote: {
+    fontSize: 12,
+    color: colors.textLight,
+    marginTop: spacing.md,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  reportFooter: {
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  reportSubmitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.error,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    gap: spacing.sm,
+  },
+  reportSubmitButtonDisabled: {
+    opacity: 0.5,
+  },
+  reportSubmitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFF',
+  },
 });
 
 export default ShortsScreen;
+

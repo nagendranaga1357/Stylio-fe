@@ -205,88 +205,88 @@ const BookingConfirmationScreen = () => {
 
   // Render with legacy Booking object
   const renderWithLegacyFormat = () => (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
-      {/* Success Animation */}
-      <View style={styles.successContainer}>
-        <View style={styles.successIcon}>
-          <Ionicons name="checkmark" size={48} color={colors.textOnPrimary} />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Success Animation */}
+        <View style={styles.successContainer}>
+          <View style={styles.successIcon}>
+            <Ionicons name="checkmark" size={48} color={colors.textOnPrimary} />
+          </View>
+          <Text style={styles.successTitle}>Booking Confirmed!</Text>
+          <Text style={styles.successSubtitle}>
+            Your appointment has been successfully booked
+          </Text>
         </View>
-        <Text style={styles.successTitle}>Booking Confirmed!</Text>
-        <Text style={styles.successSubtitle}>
-          Your appointment has been successfully booked
-        </Text>
-      </View>
 
-      {/* Booking Details Card */}
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
+        {/* Booking Details Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
           <Text style={styles.bookingNumber}>#{legacyBooking!.bookingNumber}</Text>
           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(legacyBooking!.status) + '20' }]}>
             <Text style={[styles.statusText, { color: getStatusColor(legacyBooking!.status) }]}>
               {getStatusText(legacyBooking!.status)}
-            </Text>
+              </Text>
+            </View>
           </View>
-        </View>
 
         <Text style={styles.salonName}>{legacyBooking!.salon?.name || legacyBooking!.salonName}</Text>
 
-        <View style={styles.divider} />
+          <View style={styles.divider} />
 
-        <View style={styles.detailsGrid}>
+          <View style={styles.detailsGrid}>
           <View style={styles.gridDetailItem}>
-            <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-            <View>
-              <Text style={styles.detailLabel}>Date</Text>
+              <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+              <View>
+                <Text style={styles.detailLabel}>Date</Text>
               <Text style={styles.gridDetailValue}>{formatDate(legacyBooking!.bookingDate)}</Text>
+              </View>
             </View>
-          </View>
 
           <View style={styles.gridDetailItem}>
-            <Ionicons name="time-outline" size={20} color={colors.primary} />
-            <View>
-              <Text style={styles.detailLabel}>Time</Text>
+              <Ionicons name="time-outline" size={20} color={colors.primary} />
+              <View>
+                <Text style={styles.detailLabel}>Time</Text>
               <Text style={styles.gridDetailValue}>{formatTime(legacyBooking!.bookingTime)}</Text>
+              </View>
             </View>
-          </View>
 
           <View style={styles.gridDetailItem}>
-            <Ionicons name="cut-outline" size={20} color={colors.primary} />
-            <View>
-              <Text style={styles.detailLabel}>Services</Text>
+              <Ionicons name="cut-outline" size={20} color={colors.primary} />
+              <View>
+                <Text style={styles.detailLabel}>Services</Text>
               <Text style={styles.gridDetailValue}>
                 {legacyBooking!.servicesCount || legacyBooking!.services?.length || 0} service(s)
-              </Text>
+                </Text>
+              </View>
             </View>
-          </View>
 
           <View style={styles.gridDetailItem}>
-            <Ionicons name="storefront-outline" size={20} color={colors.primary} />
-            <View>
-              <Text style={styles.detailLabel}>Type</Text>
+              <Ionicons name="storefront-outline" size={20} color={colors.primary} />
+              <View>
+                <Text style={styles.detailLabel}>Type</Text>
               <Text style={styles.gridDetailValue}>
                 {legacyBooking!.bookingType === 'home' ? 'At Home' : 'At Salon'}
-              </Text>
+                </Text>
+              </View>
             </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Amount */}
+          <View style={styles.amountRow}>
+            <Text style={styles.amountLabel}>Total Amount</Text>
+          <Text style={styles.amountValue}>{formatCurrency(legacyBooking!.finalAmount)}</Text>
           </View>
         </View>
 
-        <View style={styles.divider} />
-
-        {/* Amount */}
-        <View style={styles.amountRow}>
-          <Text style={styles.amountLabel}>Total Amount</Text>
-          <Text style={styles.amountValue}>{formatCurrency(legacyBooking!.finalAmount)}</Text>
+        {/* Info Note */}
+        <View style={styles.infoBox}>
+          <Ionicons name="information-circle-outline" size={20} color={colors.info} />
+          <Text style={styles.infoText}>
+            You can cancel or reschedule your booking up to 2 hours before the appointment time.
+          </Text>
         </View>
-      </View>
-
-      {/* Info Note */}
-      <View style={styles.infoBox}>
-        <Ionicons name="information-circle-outline" size={20} color={colors.info} />
-        <Text style={styles.infoText}>
-          You can cancel or reschedule your booking up to 2 hours before the appointment time.
-        </Text>
-      </View>
-    </ScrollView>
+      </ScrollView>
   );
 
   return (

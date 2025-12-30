@@ -51,7 +51,8 @@ const FavoritesScreen = () => {
 
   const handleRemoveFavorite = async (salonId: string) => {
     try {
-      await favoriteService.removeFavorite(salonId);
+      // Use toggleFavorite since removeFavorite endpoint may not exist
+      await favoriteService.toggleFavorite(salonId);
       setFavorites(prev => prev.filter(f => f.salon?.id !== salonId));
     } catch (err) {
       console.error('Failed to remove favorite', err);

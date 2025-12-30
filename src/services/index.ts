@@ -397,23 +397,36 @@ export const userService = {
   },
 
   async updateAvatar(uri: string) {
-    const formData = new FormData();
-    const filename = uri.split('/').pop() || 'avatar.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
-    
-    formData.append('avatar', {
-      uri,
-      name: filename,
-      type,
-    } as any);
+    try {
+      // Import manipulator and file system dynamically
+      const ImageManipulator = await import('expo-image-manipulator');
+      const FileSystem = await import('expo-file-system');
 
-    const response = await api.post('/users/avatar', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data.data;
+      // Compress the image (resize to max 400x400 and compress quality)
+      const manipulatedImage = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 400, height: 400 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      // Read the compressed image as base64
+      const base64Image = await FileSystem.readAsStringAsync(manipulatedImage.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Create data URL for storage
+      const avatarDataUrl = `data:image/jpeg;base64,${base64Image}`;
+
+      // Send base64 image to backend to store in DB
+      const response = await api.patch('/users/profile', {
+        avatar: avatarDataUrl,
+      });
+      
+      return response.data.data.user || response.data.data;
+    } catch (error) {
+      console.error('Failed to update avatar:', error);
+      throw error;
+    }
   },
 
   async changePassword(currentPassword: string, newPassword: string) {

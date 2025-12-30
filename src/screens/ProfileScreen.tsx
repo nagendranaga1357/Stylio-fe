@@ -91,12 +91,12 @@ const ProfileScreen = () => {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await logout();
-              showToast.success('Success', 'Logged out successfully');
-            } catch (err) {
-              showToast.error('Error', 'Failed to logout');
-            }
+    try {
+      await logout();
+      showToast.success('Success', 'Logged out successfully');
+    } catch (err) {
+      showToast.error('Error', 'Failed to logout');
+    }
           },
         },
       ]
@@ -121,9 +121,14 @@ const ProfileScreen = () => {
       if (!result.canceled && result.assets[0]) {
         setIsLoading(true);
         try {
-          await userService.updateAvatar(result.assets[0].uri);
+          const updatedUser = await userService.updateAvatar(result.assets[0].uri);
+          // Update user context with new avatar
+          if (updateUser && updatedUser) {
+            updateUser({ avatar: updatedUser.avatar });
+          }
           showToast.success('Success', 'Profile picture updated');
         } catch (err) {
+          console.error('Avatar update error:', err);
           showToast.error('Error', 'Failed to update profile picture');
         } finally {
           setIsLoading(false);
@@ -270,7 +275,7 @@ const ProfileScreen = () => {
                 <ActivityIndicator color="#FFF" />
               </View>
             )}
-          </TouchableOpacity>
+            </TouchableOpacity>
           <Text style={styles.userName}>{user?.fullName || user?.username}</Text>
           <Text style={styles.userEmail}>{user?.email}</Text>
           {user?.phone && <Text style={styles.userPhone}>{user.phone}</Text>}

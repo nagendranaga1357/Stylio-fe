@@ -11,12 +11,14 @@ import {
   FlatList,
   Linking,
   Platform,
+  Modal,
+  StatusBar,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 import { useSalons } from '../hooks';
 import { favoriteService } from '../services';
@@ -83,7 +85,11 @@ const SalonDetailsScreen = () => {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [isFavorite, setIsFavorite] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [galleryVisible, setGalleryVisible] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const [addressModalVisible, setAddressModalVisible] = useState(false);
   const carouselRef = useRef<FlatList>(null);
+  const galleryRef = useRef<FlatList>(null);
 
   // Get all images (cover + gallery)
   const getAllImages = () => {
@@ -108,16 +114,6 @@ const SalonDetailsScreen = () => {
     return images.length > 0 ? images : ['https://via.placeholder.com/400x300?text=No+Image'];
   };
 
-  // Handle phone call
-  const handleCall = () => {
-    const phoneNumber = salon?.phone || salon?.mobile;
-    if (phoneNumber) {
-      const cleanNumber = phoneNumber.replace(/[^0-9+]/g, '');
-      Linking.openURL(`tel:${cleanNumber}`);
-    } else {
-      showToast.error('Error', 'Phone number not available');
-    }
-  };
 
   useEffect(() => {
     if (salonId) {
@@ -205,12 +201,20 @@ const SalonDetailsScreen = () => {
               const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
               setCurrentImageIndex(index);
             }}
-            renderItem={({ item }) => (
-              <Image
-                source={{ uri: item }}
-                style={styles.heroImage}
-                resizeMode="cover"
-              />
+            renderItem={({ item, index }) => (
+              <TouchableOpacity 
+                activeOpacity={0.9}
+                onPress={() => {
+                  setGalleryIndex(index);
+                  setGalleryVisible(true);
+                }}
+              >
+                <Image
+                  source={{ uri: item }}
+                  style={styles.heroImage}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
             )}
           />
           <LinearGradient
@@ -219,7 +223,7 @@ const SalonDetailsScreen = () => {
           />
           
           {/* Image Counter */}
-          {images.length > 1 && (
+          {/* {images.length > 1 && (
             <View style={styles.imageCounter}>
               <Ionicons name="images-outline" size={14} color={colors.textOnPrimary} />
               <Text style={styles.imageCounterText}>
@@ -227,7 +231,7 @@ const SalonDetailsScreen = () => {
               </Text>
             </View>
           )}
-          
+           */}
           {/* Pagination Dots */}
           {images.length > 1 && (
             <View style={styles.paginationDots}>
@@ -284,12 +288,12 @@ const SalonDetailsScreen = () => {
               <Ionicons name="star" size={18} color={colors.star} />
               <Text style={styles.rating}>{rating.toFixed(1)}</Text>
               <Text style={styles.reviews}>({salon.totalReviews} reviews)</Text>
-              {salon.priceLevel && (
+              {/* {salon.priceLevel && salon.priceLevel > 0 && (
                 <>
                   <Text style={styles.separator}>•</Text>
                   <Text style={styles.priceLevel}>{'₹'.repeat(salon.priceLevel)}</Text>
                 </>
-              )}
+              )} */}
             </View>
           </View>
         </View>
@@ -311,7 +315,11 @@ const SalonDetailsScreen = () => {
 
         {/* Info Cards */}
         <View style={styles.infoCards}>
-          <View style={styles.infoCard}>
+          <TouchableOpacity 
+            style={styles.infoCard}
+            onPress={() => setAddressModalVisible(true)}
+            activeOpacity={0.7}
+          >
             <Ionicons name="location-outline" size={20} color={colors.primary} />
             <View style={styles.infoCardContent}>
               <Text style={styles.infoLabel}>Location</Text>
@@ -320,7 +328,8 @@ const SalonDetailsScreen = () => {
                 {typeof salon.area === 'object' && salon.area?.name ? `, ${salon.area.name}` : ''}
               </Text>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.textLight} />
+          </TouchableOpacity>
           <View style={styles.infoCard}>
             <Ionicons name="time-outline" size={20} color={colors.primary} />
             <View style={styles.infoCardContent}>
@@ -332,24 +341,22 @@ const SalonDetailsScreen = () => {
           </View>
         </View>
 
-        {/* Phone Number Card */}
-        {(salon.phone || salon.mobile) && (
+        {/* Contact Card - Show mobile (preferred) or phone */}
+        {(salon.mobile || salon.phone) && (
           <TouchableOpacity 
-            style={styles.phoneCard}
-            onPress={handleCall}
+            style={styles.contactCard}
+            onPress={() => {
+              const phoneNumber = salon.mobile || salon.phone;
+              const cleanNumber = phoneNumber!.replace(/[^0-9+]/g, '');
+              Linking.openURL(`tel:${cleanNumber}`);
+            }}
             activeOpacity={0.7}
           >
-            <View style={styles.phoneIconContainer}>
-              <Ionicons name="call" size={24} color={colors.textOnPrimary} />
+            <View style={styles.contactIconContainer}>
+              <Ionicons name="call" size={18} color={colors.textOnPrimary} />
             </View>
-            <View style={styles.phoneContent}>
-              <Text style={styles.phoneLabel}>Call Now</Text>
-              <Text style={styles.phoneNumber}>{salon.phone || salon.mobile}</Text>
-              {salon.mobile && salon.phone && salon.mobile !== salon.phone && (
-                <Text style={styles.phoneSecondary}>{salon.mobile}</Text>
-              )}
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={colors.primary} />
+            <Text style={styles.contactNumber}>{salon.mobile || salon.phone}</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
         )}
 
@@ -463,6 +470,162 @@ const SalonDetailsScreen = () => {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Full Screen Gallery Modal */}
+      <Modal
+        visible={galleryVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setGalleryVisible(false)}
+      >
+        <StatusBar backgroundColor="#000" barStyle="light-content" />
+        <View style={styles.galleryModal}>
+          {/* Close Button */}
+          <TouchableOpacity
+            style={styles.galleryCloseBtn}
+            onPress={() => setGalleryVisible(false)}
+          >
+            <Ionicons name="close" size={28} color={colors.textOnPrimary} />
+          </TouchableOpacity>
+
+          {/* Image Counter */}
+          <View style={styles.galleryCounter}>
+            <Text style={styles.galleryCounterText}>
+              {galleryIndex + 1} / {images.length}
+            </Text>
+          </View>
+
+          {/* Gallery Images */}
+          <FlatList
+            ref={galleryRef}
+            data={images}
+            keyExtractor={(item, index) => `gallery-${index}`}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={galleryIndex}
+            getItemLayout={(data, index) => ({
+              length: SCREEN_WIDTH,
+              offset: SCREEN_WIDTH * index,
+              index,
+            })}
+            onMomentumScrollEnd={(e) => {
+              const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+              setGalleryIndex(index);
+            }}
+            renderItem={({ item }) => (
+              <View style={styles.galleryImageContainer}>
+                <Image
+                  source={{ uri: item }}
+                  style={styles.galleryImage}
+                  resizeMode="contain"
+                />
+              </View>
+            )}
+          />
+
+          {/* Thumbnail Strip */}
+          {images.length > 1 && (
+            <View style={styles.thumbnailStrip}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {images.map((img, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => {
+                      setGalleryIndex(index);
+                      galleryRef.current?.scrollToIndex({ index, animated: true });
+                    }}
+                    style={[
+                      styles.thumbnail,
+                      galleryIndex === index && styles.thumbnailActive
+                    ]}
+                  >
+                    <Image
+                      source={{ uri: img }}
+                      style={styles.thumbnailImage}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+      </Modal>
+
+      {/* Address Preview Modal */}
+      <Modal
+        visible={addressModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setAddressModalVisible(false)}
+      >
+        <View style={styles.addressModalOverlay}>
+          <View style={styles.addressModalContent}>
+            {/* Header */}
+            <View style={styles.addressModalHeader}>
+              <Text style={styles.addressModalTitle}>Full Address</Text>
+              <TouchableOpacity onPress={() => setAddressModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Address Details */}
+            <View style={styles.addressDetails}>
+              <View style={styles.addressIconRow}>
+                <View style={styles.addressIconContainer}>
+                  <Ionicons name="location" size={24} color={colors.primary} />
+                </View>
+                <View style={styles.addressTextContainer}>
+                  <Text style={styles.addressLabel}>Street Address</Text>
+                  <Text style={styles.addressText}>{salon.address}</Text>
+                </View>
+              </View>
+
+              {typeof salon.area === 'object' && salon.area?.name && (
+                <View style={styles.addressIconRow}>
+                  <View style={styles.addressIconContainer}>
+                    <Ionicons name="business-outline" size={24} color={colors.info} />
+                  </View>
+                  <View style={styles.addressTextContainer}>
+                    <Text style={styles.addressLabel}>Area</Text>
+                    <Text style={styles.addressText}>{salon.area.name}</Text>
+                  </View>
+                </View>
+              )}
+
+              {salon.cityName && (
+                <View style={styles.addressIconRow}>
+                  <View style={styles.addressIconContainer}>
+                    <Ionicons name="map-outline" size={24} color={colors.success} />
+                  </View>
+                  <View style={styles.addressTextContainer}>
+                    <Text style={styles.addressLabel}>City</Text>
+                    <Text style={styles.addressText}>{salon.cityName}</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Open in Maps Button */}
+            <TouchableOpacity
+              style={styles.openMapsButton}
+              onPress={() => {
+                const address = encodeURIComponent(
+                  `${salon.address}${salon.cityName ? ', ' + salon.cityName : ''}`
+                );
+                const url = Platform.select({
+                  ios: `maps:0,0?q=${address}`,
+                  android: `geo:0,0?q=${address}`,
+                });
+                if (url) Linking.openURL(url);
+              }}
+            >
+              <Ionicons name="navigate" size={20} color={colors.textOnPrimary} />
+              <Text style={styles.openMapsButtonText}>Open in Maps</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -479,17 +642,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   heroContainer: {
-    height: 280,
+    height: 350,
     position: 'relative',
   },
   heroImage: {
     width: SCREEN_WIDTH,
-    height: 280,
+    height: 350,
   },
   imageCounter: {
     position: 'absolute',
-    top: 50,
-    right: spacing.md + 50 + 50 + spacing.sm * 2, // Account for action buttons
+    bottom: 50,
+    
+    right: 0, // Account for action buttons
     backgroundColor: 'rgba(0,0,0,0.6)',
     flexDirection: 'row',
     alignItems: 'center',
@@ -505,7 +669,7 @@ const styles = StyleSheet.create({
   },
   paginationDots: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 10,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -532,15 +696,15 @@ const styles = StyleSheet.create({
   },
   modeBadgeOverlay: {
     position: 'absolute',
-    top: 50,
-    left: '50%',
+    top: 60,
+    left: '40%',
     transform: [{ translateX: -50 }],
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
-    gap: spacing.xs,
+    gap: 3,
   },
   modeBadgeOverlayText: {
     ...typography.bodySmall,
@@ -575,7 +739,7 @@ const styles = StyleSheet.create({
     right: spacing.md,
   },
   salonName: {
-    ...typography.h2,
+    ...typography.h3,
     color: colors.textOnPrimary,
     marginBottom: spacing.xs,
   },
@@ -585,12 +749,12 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   rating: {
-    ...typography.body,
+    ...typography.bodySmall,
     color: colors.textOnPrimary,
     fontWeight: '600',
   },
   reviews: {
-    ...typography.body,
+    ...typography.bodySmall,
     color: colors.textOnPrimary,
     opacity: 0.8,
   },
@@ -643,63 +807,119 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: colors.backgroundSecondary,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
     gap: spacing.sm,
   },
   infoCardContent: {
     flex: 1,
+    minWidth: 0,
   },
   infoLabel: {
-    ...typography.caption,
+    fontSize: 11,
     color: colors.textSecondary,
+    marginBottom: 2,
   },
   infoValue: {
-    ...typography.bodySmall,
+    fontSize: 12,
     color: colors.text,
     fontWeight: '500',
+    lineHeight: 16,
   },
-  // Phone Card Styles
-  phoneCard: {
+  // Contact Card Style
+  contactCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.backgroundSecondary,
     marginHorizontal: spacing.md,
-    marginBottom: spacing.md,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.primary + '30',
+    marginBottom: spacing.sm,
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    gap: spacing.sm,
   },
-  phoneIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  contactIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.success,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.md,
   },
-  phoneContent: {
+  contactNumber: {
     flex: 1,
-  },
-  phoneLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: 2,
-  },
-  phoneNumber: {
-    ...typography.body,
+    fontSize: 14,
     color: colors.text,
     fontWeight: '600',
   },
-  phoneSecondary: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
+  // Gallery Modal Styles
+  galleryModal: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+  },
+  galleryCloseBtn: {
+    position: 'absolute',
+    top: 50,
+    right: spacing.md,
+    zIndex: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  galleryCounter: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    alignItems: 'center',
+  },
+  galleryCounterText: {
+    fontSize: 16,
+    color: colors.textOnPrimary,
+    fontWeight: '600',
+  },
+  galleryImageContainer: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  galleryImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.7,
+  },
+  thumbnailStrip: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    paddingHorizontal: spacing.md,
+  },
+  thumbnail: {
+    width: 60,
+    height: 60,
+    marginRight: spacing.sm,
+    borderRadius: borderRadius.sm,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  thumbnailActive: {
+    borderColor: colors.primary,
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
   },
   featuresContainer: {
     flexDirection: 'row',
@@ -725,7 +945,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   sectionTitle: {
-    ...typography.h3,
+    ...typography.h4,
     color: colors.text,
     marginBottom: spacing.xs,
   },
@@ -838,6 +1058,73 @@ const styles = StyleSheet.create({
     backgroundColor: colors.textLight,
   },
   bookButtonText: {
+    ...typography.button,
+    color: colors.textOnPrimary,
+  },
+  // Address Modal Styles
+  addressModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  addressModalContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  addressModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  addressModalTitle: {
+    ...typography.h4,
+    color: colors.text,
+  },
+  addressDetails: {
+    gap: spacing.md,
+  },
+  addressIconRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+  },
+  addressIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.backgroundSecondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addressTextContainer: {
+    flex: 1,
+    paddingTop: 2,
+  },
+  addressLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  addressText: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  openMapsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.lg,
+    gap: spacing.sm,
+  },
+  openMapsButtonText: {
     ...typography.button,
     color: colors.textOnPrimary,
   },

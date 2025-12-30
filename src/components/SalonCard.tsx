@@ -134,7 +134,7 @@ const SalonCard: React.FC<SalonCardProps> = ({
       <View style={styles.content}>
         {/* Header with name and mode badge */}
         <View style={styles.headerRow}>
-          <Text style={styles.name} numberOfLines={1}>{salon.name}</Text>
+        <Text style={styles.name} numberOfLines={1}>{salon.name}</Text>
           {showMode && modeDisplay && (
             <View style={[styles.modeBadge, { backgroundColor: modeDisplay.color + '20' }]}>
               <Ionicons name={modeDisplay.icon} size={10} color={modeDisplay.color} />
@@ -177,14 +177,14 @@ const SalonCard: React.FC<SalonCardProps> = ({
             <Text style={styles.reviews}>({salon.totalReviews})</Text>
           </View>
           
-          <View style={styles.rightMeta}>
+          {/* <View style={styles.rightMeta}>
             {priceDisplay && (
               <Text style={styles.priceLevel}>{priceDisplay}</Text>
             )}
             {displayDistance && (
               <Text style={styles.distance}>{displayDistance}</Text>
             )}
-          </View>
+          </View> */}
         </View>
       </View>
 

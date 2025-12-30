@@ -45,7 +45,7 @@ const SlotSelectionScreen = () => {
 
   useEffect(() => {
     if (salon?.id) {
-      loadSlots();
+    loadSlots();
     }
   }, [selectedDate, salon?.id]);
 
@@ -198,7 +198,7 @@ const SlotSelectionScreen = () => {
                 <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
                 <Text style={styles.durationText}>
                   {formatDuration(services[0]?.durationMinutes)}
-                </Text>
+          </Text>
               </View>
             </View>
           )}

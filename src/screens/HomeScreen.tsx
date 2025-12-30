@@ -465,30 +465,30 @@ const HomeScreen = () => {
                   </Text>
                   <Ionicons name="chevron-down" size={16} color="#FFF" />
                 </View>
-              </View>
+          </View>
             </TouchableOpacity>
 
             {/* Right Icons */}
             <View style={styles.headerIcons}>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => navigation.navigate('Notifications')}
-              >
-                <Ionicons name="notifications-outline" size={24} color="#FFF" />
-                {unreadCount > 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Search Bar */}
           <TouchableOpacity
-            style={styles.searchBar}
-            onPress={() => navigation.navigate('Search', { mode: selectedMode })}
+                style={styles.iconButton}
+            onPress={() => navigation.navigate('Notifications')}
           >
+                <Ionicons name="notifications-outline" size={24} color="#FFF" />
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+            </View>
+        </View>
+
+        {/* Search Bar */}
+        <TouchableOpacity
+          style={styles.searchBar}
+            onPress={() => navigation.navigate('Search', { mode: selectedMode })}
+        >
             <Ionicons name="search" size={18} color={colors.textSecondary} />
             <Text style={styles.searchPlaceholder} numberOfLines={1}>Search salons...</Text>
             <View style={styles.searchDivider} />
@@ -532,7 +532,7 @@ const HomeScreen = () => {
                 <Text style={styles.modeCardSubtitle}>Visit a salon near you</Text>
               </View>
             </LinearGradient>
-          </TouchableOpacity>
+        </TouchableOpacity>
 
           <TouchableOpacity 
             style={[
@@ -564,7 +564,7 @@ const HomeScreen = () => {
         {/* Categories */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Categories</Text>
+          <Text style={styles.sectionTitle}>Categories</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Categories', { mode: selectedMode })} style={styles.seeAllButton}>
               <Text style={styles.seeAll}>See All</Text>
               <Ionicons name="chevron-forward" size={16} color={colors.primary} />
@@ -598,11 +598,11 @@ const HomeScreen = () => {
                 <Ionicons name="chevron-forward" size={16} color={colors.primary} />
               </TouchableOpacity>
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScrollContent}
-            >
+          >
               {nearbySalons.map((salon) => (
                 <SalonCardHorizontal
                   key={salon.id}
@@ -642,8 +642,8 @@ const HomeScreen = () => {
                   onPress={() => navigation.navigate('SalonDetails', { salonId: salon.id })}
                   showMode={true}
                 />
-              ))}
-            </ScrollView>
+            ))}
+          </ScrollView>
           </View>
         )}
 
@@ -665,11 +665,11 @@ const HomeScreen = () => {
           </View>
           
           <View style={styles.salonList}>
-            {isLoading && !refreshing ? (
-              <View style={styles.loadingContainer}>
+          {isLoading && !refreshing ? (
+            <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={styles.loadingText}>Loading...</Text>
-              </View>
+              <Text style={styles.loadingText}>Loading...</Text>
+            </View>
             ) : salons.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Ionicons name="storefront-outline" size={48} color={colors.textLight} />
@@ -678,18 +678,18 @@ const HomeScreen = () => {
                   {selectedMode ? 'Try changing the service mode' : 'Pull to refresh'}
                 </Text>
               </View>
-            ) : (
-              salons.slice(0, 5).map((salon) => (
-                <SalonCard
-                  key={salon.id}
-                  salon={salon}
-                  onPress={() => navigation.navigate('SalonDetails', { salonId: salon.id })}
+          ) : (
+            salons.slice(0, 5).map((salon) => (
+              <SalonCard
+                key={salon.id}
+                salon={salon}
+                onPress={() => navigation.navigate('SalonDetails', { salonId: salon.id })}
                   showMode={!selectedMode}
                   showAudience={true}
-                />
-              ))
-            )}
-          </View>
+              />
+            ))
+          )}
+        </View>
         </View>
 
         <View style={{ height: 100 }} />
