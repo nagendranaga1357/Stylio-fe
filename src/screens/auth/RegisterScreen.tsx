@@ -66,7 +66,7 @@ const RegisterScreen = () => {
     }
 
     try {
-      await register({
+      const result = await register({
         username: username.trim(),
         email: email.trim(),
         password,
@@ -74,7 +74,14 @@ const RegisterScreen = () => {
         lastName: lastName.trim() || undefined,
         phone: phone.trim() || undefined,
       });
-      showToast.success('Success', 'Account created successfully');
+      
+      // Navigate to OTP verification for email confirmation
+      if (result.requiresVerification) {
+        showToast.success('Success', 'Please verify your email with the OTP sent');
+        navigation.navigate('OtpVerification', { email: email.trim() });
+      } else {
+        showToast.success('Success', 'Account created successfully');
+      }
     } catch (err: any) {
       showToast.error('Registration Failed', err.response?.data?.message || 'Please try again');
     }

@@ -14,6 +14,7 @@ import SlotSelectionScreen from '../screens/SlotSelectionScreen';
 import BookingConfirmationScreen from '../screens/BookingConfirmationScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import SplashScreen from '../screens/SplashScreen';
+import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen';
 
 // New V1 Screens
 import ServiceListingScreen from '../screens/ServiceListingScreen';
@@ -29,7 +30,7 @@ import PrivacyScreen from '../screens/PrivacyScreen';
 const Stack = createNativeStackNavigator();
 
 const RootNavigator = () => {
-  const { isLoading, isAuthenticated, checkAuth } = useAuth();
+  const { isLoading, isAuthenticated, pendingVerification, user, checkAuth } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
@@ -52,8 +53,15 @@ const RootNavigator = () => {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {!isAuthenticated ? (
+      {!isAuthenticated && !pendingVerification ? (
         <Stack.Screen name="Auth" component={AuthNavigator} />
+      ) : pendingVerification ? (
+        // Show OTP verification screen when email verification is pending
+        <Stack.Screen 
+          name="OtpVerification" 
+          component={OtpVerificationScreen}
+          initialParams={{ email: user?.email || '' }}
+        />
       ) : (
         <>
           {/* Main Tab Navigator */}

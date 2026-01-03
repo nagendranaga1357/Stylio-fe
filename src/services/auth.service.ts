@@ -1,6 +1,10 @@
 import api, { tokenStorage } from './api';
 import { User, LoginCredentials, RegisterData, AuthResponse } from '../types';
 
+export interface RegisterResponse extends AuthResponse {
+  requiresVerification: boolean;
+}
+
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const response = await api.post('/auth/login', credentials);
@@ -11,13 +15,13 @@ export const authService = {
     return { user, tokens };
   },
 
-  async register(data: RegisterData): Promise<AuthResponse> {
+  async register(data: RegisterData): Promise<RegisterResponse> {
     const response = await api.post('/auth/register', data);
-    const { user, tokens } = response.data.data;
+    const { user, tokens, requiresVerification } = response.data.data;
     
     await tokenStorage.setTokens(tokens.accessToken, tokens.refreshToken);
     
-    return { user, tokens };
+    return { user, tokens, requiresVerification: requiresVerification ?? true };
   },
 
   async logout(): Promise<void> {
@@ -49,6 +53,20 @@ export const authService = {
     const { tokens } = response.data.data;
     
     await tokenStorage.setTokens(tokens.accessToken, tokens.refreshToken);
+  },
+
+  // Forgot Password Flow
+  async forgotPassword(email: string): Promise<void> {
+    await api.post('/auth/forgot-password', { email });
+  },
+
+  async verifyResetOtp(email: string, otp: string): Promise<string> {
+    const response = await api.post('/auth/verify-reset-otp', { email, otp });
+    return response.data.data.resetToken;
+  },
+
+  async resetPassword(resetToken: string, newPassword: string): Promise<void> {
+    await api.post('/auth/reset-password', { resetToken, newPassword });
   },
 };
 

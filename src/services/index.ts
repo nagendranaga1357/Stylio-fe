@@ -3,6 +3,7 @@ export { default as authService } from './auth.service';
 export { default as salonService } from './salon.service';
 export { default as bookingService } from './booking.service';
 export { default as providerService } from './provider.service';
+export { default as pushService } from './push.service';
 
 // Additional services
 import api from './api';

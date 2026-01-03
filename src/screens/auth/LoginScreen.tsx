@@ -14,13 +14,13 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { useAuth, TEST_CREDENTIALS } from '../../hooks';
+import { useAuth } from '../../hooks';
 import { colors, spacing, borderRadius, typography } from '../../utils/theme';
 import { showToast } from '../../utils';
 
 const LoginScreen = () => {
   const navigation = useNavigation<any>();
-  const { login, testLogin, isLoading, error, clearError } = useAuth();
+  const { login, isLoading, error, clearError } = useAuth();
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -134,34 +134,6 @@ const LoginScreen = () => {
             >
               <Text style={styles.secondaryButtonText}>Create an Account</Text>
             </TouchableOpacity>
-
-            {/* Test Login Button - For Development Only */}
-            <View style={styles.testSection}>
-              <Text style={styles.testSectionLabel}>🧪 Development Testing</Text>
-              <TouchableOpacity
-                style={styles.testButton}
-                onPress={() => {
-                  testLogin();
-                  showToast.success('Test Login', 'Logged in as test user');
-                }}
-              >
-                <Ionicons name="flask-outline" size={20} color="#FFF" />
-                <Text style={styles.testButtonText}>Quick Test Login</Text>
-              </TouchableOpacity>
-              <Text style={styles.testCredentials}>
-                Username: {TEST_CREDENTIALS.username} | Password: {TEST_CREDENTIALS.password}
-              </Text>
-              <TouchableOpacity
-                style={styles.fillCredentialsButton}
-                onPress={() => {
-                  setUsername(TEST_CREDENTIALS.username);
-                  setPassword(TEST_CREDENTIALS.password);
-                  showToast.info('Filled', 'Test credentials filled');
-                }}
-              >
-                <Text style={styles.fillCredentialsText}>Fill Test Credentials</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -314,51 +286,6 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     ...typography.button,
     color: colors.primary,
-  },
-  testSection: {
-    marginTop: spacing.xl,
-    padding: spacing.md,
-    backgroundColor: '#FFF3E0',
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: '#FF9800',
-    borderStyle: 'dashed',
-  },
-  testSectionLabel: {
-    ...typography.bodySmall,
-    color: '#E65100',
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  testButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF9800',
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    gap: spacing.xs,
-  },
-  testButtonText: {
-    ...typography.button,
-    color: '#FFF',
-  },
-  testCredentials: {
-    ...typography.caption,
-    color: '#795548',
-    textAlign: 'center',
-    marginTop: spacing.sm,
-  },
-  fillCredentialsButton: {
-    alignSelf: 'center',
-    marginTop: spacing.xs,
-  },
-  fillCredentialsText: {
-    ...typography.bodySmall,
-    color: '#FF5722',
-    textDecorationLine: 'underline',
   },
 });
 

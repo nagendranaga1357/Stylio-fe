@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { authService } from '../../services';
 import { colors, spacing, borderRadius, typography } from '../../utils/theme';
 import { showToast, isValidEmail } from '../../utils';
 
@@ -33,12 +34,15 @@ const ForgotPasswordScreen = () => {
 
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await authService.forgotPassword(email.trim());
+      showToast.success('OTP Sent', 'Check your email for the verification code');
+      navigation.navigate('ResetPasswordOtp', { email: email.trim() });
+    } catch (err: any) {
+      showToast.error('Error', err.response?.data?.message || 'Failed to send OTP');
+    } finally {
       setIsLoading(false);
-      showToast.success('Success', 'Password reset instructions sent to your email');
-      navigation.goBack();
-    }, 1500);
+    }
   };
 
   return (

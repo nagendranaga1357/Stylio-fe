@@ -5,6 +5,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen';
+import ResetPasswordOtpScreen from '../screens/auth/ResetPasswordOtpScreen';
 
 import { AuthStackParamList } from '../types';
 
@@ -22,6 +23,7 @@ const AuthNavigator = () => {
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="OtpVerification" component={OtpVerificationScreen} />
+      <Stack.Screen name="ResetPasswordOtp" component={ResetPasswordOtpScreen} />
     </Stack.Navigator>
   );
 };

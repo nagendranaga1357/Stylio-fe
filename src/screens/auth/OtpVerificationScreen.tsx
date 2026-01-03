@@ -13,12 +13,14 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { authService } from '../../services';
+import { useAuth } from '../../hooks';
 import { colors, spacing, borderRadius, typography } from '../../utils/theme';
 import { showToast } from '../../utils';
 
 const OtpVerificationScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { setVerified } = useAuth();
   const email = route.params?.email || '';
 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -69,10 +71,10 @@ const OtpVerificationScreen = () => {
     try {
       await authService.verifyOtp(otpString);
       showToast.success('Success', 'Email verified successfully');
-      navigation.navigate('Main');
+      // Mark user as verified - this will navigate to Main
+      setVerified();
     } catch (err: any) {
       showToast.error('Error', err.response?.data?.message || 'Invalid OTP');
-    } finally {
       setIsLoading(false);
     }
   };
